@@ -17,13 +17,13 @@ Every phase ends with something that runs on the phone. Git is introduced gradua
 
 ## Phase 0 — Setup
 
-- [ ] Install Node.js and Android Studio (includes the Android SDK and a JDK)
-- [ ] Enable Developer options and USB debugging on the phone
-- [ ] Create the project: `npm init`, install `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`
-- [ ] Run `npx cap init` with `webDir` set to `www`
-- [ ] Add a `www/index.html` saying "Hello"
-- [ ] Run `npx cap add android` and `npx cap run android`
-- [ ] Put the project itself under git
+- [x] Install Node.js and Android Studio (includes the Android SDK and a JDK)
+- [x] Enable Developer options and USB debugging on the phone
+- [x] Create the project: `npm init`, install `@capacitor/core`, `@capacitor/cli`, `@capacitor/android`
+- [x] Run `npx cap init` with `webDir` set to `www`
+- [x] Add a `www/index.html` saying "Hello"
+- [x] Run `npx cap add android` and `npx cap run android`
+- [x] Put the project itself under git
 
 **Done when:** the "Hello" page opens as an app on the phone and can be inspected via `chrome://inspect`.
 

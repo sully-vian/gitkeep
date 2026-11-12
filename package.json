@@ -1,9 +1,6 @@
 {
     "name": "gitkeep",
-    "scripts": {
-        "sync": "cap sync android",
-        "android": "cap run android"
-    },
+    "private": true,
     "dependencies": {
         "@capacitor/android": "^8.6.0",
         "@capacitor/core": "^8.6.0"
