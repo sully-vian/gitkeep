@@ -29,7 +29,7 @@ Every phase ends with something that runs on the phone. Git is introduced gradua
 
 ## Phase 1 — UI prototype (desktop browser, no Java)
 
-- [ ] Add `alpine.min.js` and `marked` to `www/lib/`
+- [ ] Add `alpinejs` and `marked` as bun dependencies, copied into `www/lib/` by the Makefile at build time (not committed)
 - [ ] Write a mock `GitSync` in JS (`loadAll`, `saveNote`, `deleteNote`) backed by memory or `localStorage`, used only when `window.Capacitor` is missing
 - [ ] Note list
 - [ ] Search box (`includes()` filter)

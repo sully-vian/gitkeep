@@ -5,7 +5,7 @@ APP_ID = com.sully_vian.gitkeep
 CYAN = $(shell tput setaf 6)
 RESET = $(shell tput sgr0)
 
-.PHONY: help install serve sync build run logs clean
+.PHONY: help install lib serve sync build run logs clean
 
 .DEFAULT_GOAL := help
 
@@ -15,10 +15,18 @@ help: ## Show this help message
 install: ## Install JS dependencies
 	bun install
 
-serve: ## UI work in desktop Chrome
+lib: install ## Copy JS libraries into www/lib/
+	mkdir -p www/lib
+	cp node_modules/alpinejs/dist/cdn.min.js www/lib/alpine.min.js
+	cp node_modules/marked/lib/marked.umd.js www/lib/
+	cp node_modules/marked-highlight/lib/index.umd.js www/lib/marked-highlight.umd.js
+	cp node_modules/@highlightjs/cdn-assets/styles/github.min.css www/lib/
+	cp node_modules/@highlightjs/cdn-assets/highlight.min.js www/lib/
+
+serve: lib ## UI work in desktop Chrome
 	bunx serve www
 
-sync: install ## Copy www/ and plugins into android/
+sync: lib ## Copy www/ and plugins into android/
 	$(CAP) sync android
 
 build: sync ## Debug APK, no phone needed
@@ -30,5 +38,6 @@ run: sync ## Build, install and launch on the phone
 logs: ## Native logs from the app
 	adb logcat --pid $$(adb shell pidof -s $(APP_ID))
 
-clean: ## Clean android/
+clean: ## Clean android/ and www/lib/
 	$(GRADLEW) clean
+	rm -rf www/lib

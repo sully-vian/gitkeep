@@ -2,11 +2,43 @@
 <html lang="en">
 
 <head>
+    <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <link rel="stylesheet" href="lib/github.min.css">
+    <script src="lib/marked.umd.js"></script>
+    <script src="lib/highlight.min.js"></script>
+    <script src="lib/marked-highlight.umd.js"></script>
+    <script src="lib/alpine.min.js" defer></script>
 </head>
 
 <body>
     <h1>Hello</h1>
+
+    <div x-data="{ open: false }">
+        <button type="button" @click="open = true">Expand</button>
+        <button type="button" @click="open = false">Hide</button>
+
+        <span x-show="open">
+            Content...
+        </span>
+    </div>
+
+    <div
+        x-data="{ text: '# Title\n\nSome **bold** and a [link](https://example.com).\n\n- one\n- two\n\n### Code\n\n```python\ndef foo(x):\n    print(x)\n```' }">
+        <textarea x-model="text" rows="16" cols="40"></textarea>
+        <div x-html="marked.parse(text)"></div>
+    </div>
+    <script>
+        const {markedHighlight} = globalThis.markedHighlight;
+        marked.use(markedHighlight({
+            emptyLangClass: 'hljs',
+            langPrefix: 'hljs language-',
+            highlight(code, lang) {
+                const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                return hljs.highlight(code, {language}).value;
+            },
+        }));
+    </script>
 </body>
 
 </html>
