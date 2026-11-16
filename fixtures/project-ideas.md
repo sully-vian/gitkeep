@@ -1,0 +1,13 @@
+---
+tags: [ideas, side-projects]
+---
+
+# Project ideas
+
+1. A git-based notes app (this one)
+2. A CLI to tag photos by date
+3. A plant-watering reminder
+
+Inline tags too: #ideas #someday
+
+Not tags: a `#` in code, C# the language, issue #42, and a URL anchor https://example.com/#section.

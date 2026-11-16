@@ -1,0 +1,11 @@
+# Welcome to gitkeep
+
+Notes are plain **Markdown** files, stored in a *git* repository.
+
+- Tap a note to edit it
+- Use **Preview** to see it rendered
+- Notes save themselves while you type
+
+See the [Markdown guide](https://www.markdownguide.org/basic-syntax/) for the syntax.
+
+> Tip: these notes are fixtures. Reset them from the console with `resetFixtures()`.

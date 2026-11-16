@@ -1,0 +1,38 @@
+# Code snippets
+
+Inline code: `git commit -m "message"`.
+
+```python
+def greet(name: str) -> str:
+    return f"Hello, {name}!"
+```
+
+```js
+const notes = await GitSync.loadAll();
+console.log(notes.length);
+```
+
+```bash
+adb devices
+make run
+```
+
+```java
+public class Hello {
+    public static void main(String[] args) {
+        System.out.println("Hello");
+    }
+}
+```
+
+A block without a language:
+
+```
+plain text, no highlighting
+```
+
+A block with an unknown language:
+
+```nosuchlang
+should fall back to plain text
+```
