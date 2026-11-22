@@ -1,0 +1,4 @@
+// Plugin versions for all modules. Each module applies the plugins it needs.
+plugins {
+    id 'com.android.application' version '8.13.0' apply false
+}

@@ -1,0 +1,28 @@
+plugins {
+    id 'java-library'
+}
+
+// Compiles against the Java 17 API. Note that Android doesn't provide every Java 17 API
+// at minSdk 26: avoid APIs newer than what Android supports, even though the JVM tests pass.
+tasks.withType(JavaCompile).configureEach {
+    options.release = 17
+    options.encoding = 'UTF-8'
+}
+
+dependencies {
+    implementation 'org.yaml:snakeyaml:2.7'
+
+    testImplementation platform('org.junit:junit-bom:6.1.3')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+    // The top-level fixtures/ folder, shared test data for the note format.
+    systemProperty 'fixtures.dir', rootProject.file('fixtures').absolutePath
+    testLogging {
+        events = ['failed']
+        exceptionFormat = 'full'
+    }
+}

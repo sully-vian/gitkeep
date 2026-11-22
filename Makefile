@@ -1,46 +1,30 @@
 SHELL = bash
-GRADLEW = cd android && ./gradlew
-CAP = bunx cap
+GRADLEW = ./gradlew
 APP_ID = com.sully_vian.gitkeep
 CYAN = $(shell tput setaf 6)
 RESET = $(shell tput sgr0)
 
-.PHONY: help install lib fixtures serve sync build run logs clean
+.PHONY: help build test install run logs clean
 
 .DEFAULT_GOAL := help
 
 help: ## Show this help message
 	@rg '^([ a-zA-Z_-]+): [ a-zA-Z_-]*## (.*)$$' -r $$'$(CYAN)$$1$(RESET)\t$$2' $(MAKEFILE_LIST) | column -t -s $$'\t'
 
-install: ## Install JS dependencies
-	bun install
+build: ## Debug APK, no phone needed
+	$(GRADLEW) :app:assembleDebug
 
-lib: install ## Copy JS libraries into www/lib/
-	mkdir -p www/lib
-	cp node_modules/alpinejs/dist/cdn.min.js www/lib/alpine.min.js
-	cp node_modules/marked/lib/marked.umd.js www/lib/
-	cp node_modules/marked-highlight/lib/index.umd.js www/lib/marked-highlight.umd.js
-	cp node_modules/@highlightjs/cdn-assets/styles/github.min.css www/lib/
-	cp node_modules/@highlightjs/cdn-assets/highlight.min.js www/lib/
+test: ## JVM unit tests (no phone needed)
+	$(GRADLEW) test
 
-fixtures: ## Bundle fixtures/*.md into www/fixtures.json
-	./scripts/build-fixtures.sh > ./www/fixtures.json
+install: ## Build and install the debug APK on the phone
+	$(GRADLEW) :app:installDebug
 
-serve: lib fixtures ## UI work in desktop Chrome
-	bunx serve www
+run: install ## Build, install and launch on the phone
+	adb shell am start -n $(APP_ID)/.MainActivity
 
-sync: lib fixtures ## Copy www/ and plugins into android/
-	$(CAP) sync android
-
-build: sync ## Debug APK, no phone needed
-	$(GRADLEW) assembleDebug
-
-run: sync ## Build, install and launch on the phone
-	$(CAP) run android
-
-logs: ## Native logs from the app
+logs: ## Logs from the running app
 	adb logcat --pid $$(adb shell pidof -s $(APP_ID))
 
-clean: ## Clean android/ and generated files in www/
+clean: ## Delete build outputs
 	$(GRADLEW) clean
-	rm -rf www/lib www/fixtures.json

@@ -1,3 +1,21 @@
-node_modules/
-www/lib/
-www/fixtures.json
+# Gradle
+.gradle/
+build/
+.kotlin/
+
+# Machine-specific SDK path
+local.properties
+
+# IDEs (jdtls / Eclipse metadata, IntelliJ)
+.project
+.classpath
+.settings/
+bin/
+.idea/
+*.iml
+
+# Android
+captures/
+.cxx/
+*.apk
+*.aab
