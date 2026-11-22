@@ -1,3 +1,5 @@
 # Note with spaces
 
-This file name contains spaces, to check that paths are handled as plain strings everywhere (list, save, delete, and later git).
+A file created outside the app (e.g. on a computer): no header, and a name that isn't a timestamp, with spaces.
+
+The app should still list it, with an empty title and no tags, and keep the name when saving.
