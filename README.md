@@ -1,5 +1,5 @@
 # gitkeep
-A simple git-based note-taking mobile app
+A simple git-based note-taking app for Android, written in Java
 
 ## Note format
 
@@ -47,26 +47,29 @@ So that saving a note without changes produces an identical file, and no git dif
 
 ### In the app
 
-The web app works with notes as objects:
+The app works with notes as `Note` objects:
 
-```js
-{
-    path: "20261117-143052.md", // identity: which file to write or delete
-    title: "Meeting with the team",
-    tags: ["work", "meetings"],
-    createdAt: "2026-11-17T14:30:52+01:00",
-    modifiedAt: "2026-11-18T09:12:00+01:00", // read-only, from git; never written to the file
-    extra: { aliases: ["standup"] }, // unknown header keys, kept as-is
-    content: "The note's body, in Markdown.\n",
+```java
+public final class Note {
+    String path;                // "20261117-143052.md": identity, which file to write or delete
+    String title;               // "Meeting with the team"
+    List<String> tags;          // ["work", "meetings"]
+    OffsetDateTime createdAt;   // 2026-11-17T14:30:52+01:00
+    OffsetDateTime modifiedAt;  // read-only, from git; never written to the file
+    Map<String, Object> extra;  // unknown header keys (e.g. aliases), kept as-is, in their original order
+    String content;             // the body, in Markdown
 }
 ```
 
-### Where the conversion happens: in JavaScript, not in Java
+`createdAt` is `null` when the header has no usable `created` value (no header, or a hand-written date without a time).
 
-The native plugin only moves raw files: it reads and writes `{ path, text }`, and handles git. One JavaScript module converts between the raw file text and the note object above.
+### Where the conversion happens
 
-Parsing the header in Java instead would mean:
+One class, `NoteFormat`, converts between a file's text and a `Note`:
 
-- **Two parsers to keep identical.** The browser mock (used for all UI work in desktop Chrome) must return exactly what the plugin returns, so the conversion would have to exist in both Java and JavaScript. Two YAML libraries with different edge cases, for example around dates, booleans and quoting, would drift apart, and the app would behave differently in the browser and on the phone.
-- **Slower iteration on the fiddliest part.** Front matter edge cases are best fixed with instant reloads in the browser, not with a rebuild and reinstall on the phone for each try.
-- **A bigger plugin for no gain.** The plugin's real job, git (commit, pull, merge, push, conflicts), is already the hardest part of the app. The background sync worker never needs titles or tags, so parsing in Java would add code there without giving it anything.
+- `NoteFormat.parse(path, text)` returns a `Note`.
+- `NoteFormat.serialize(note)` returns the file's text, following the writing rules above.
+
+It uses SnakeYAML for the header and has no Android dependencies, so it runs in plain JVM unit tests (`./gradlew test`) against every file in `fixtures/`. It's the only place that knows the file format: the UI, the note store, git and sync all work with `Note` objects or raw text, never with YAML.
+
+SnakeYAML drops comments when it writes YAML, so a comment written by hand in a header is lost the first time the app saves that note. Either accept this, or have `serialize` update only the known keys in the original header text.
