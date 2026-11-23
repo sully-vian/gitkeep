@@ -33,12 +33,12 @@ Every phase ends with something that runs on the phone. Git is introduced gradua
 
 - [x] Install the Android SDK command-line tools and a JDK supported by the Android build tools (JDK 21)
 - [x] Enable Developer options and USB debugging on the phone
-- [ ] Remove the Capacitor project: `android/`, `www/`, `package.json`, `bun.lock`, `capacitor.config.json`, `node_modules/`
-- [ ] Write a minimal Gradle project by hand: `settings.gradle`, root and app `build.gradle`, `gradle.properties`, Gradle wrapper, `AndroidManifest.xml`, one `MainActivity` with one layout saying "Hello"
-- [ ] Keep the app ID: `com.sully_vian.gitkeep`
-- [ ] Add one JUnit test that passes
-- [ ] Rewrite the Makefile: `build`, `install`, `run` (install + launch), `test`, `logs`, `clean`
-- [ ] Set up jdtls in neovim for the project
+- [x] Remove the Capacitor project: `android/`, `www/`, `package.json`, `bun.lock`, `capacitor.config.json`, `node_modules/`
+- [x] Write a minimal Gradle project by hand: `settings.gradle`, root and app `build.gradle`, `gradle.properties`, Gradle wrapper, `AndroidManifest.xml`, one `MainActivity` with one layout saying "Hello"
+- [x] Keep the app ID: `com.sully_vian.gitkeep`
+- [x] Add one JUnit test that passes
+- [x] Rewrite the Makefile: `build`, `install`, `run` (install + launch), `test`, `logs`, `clean`
+- [x] Set up jdtls in neovim for the project
 
 **Done when:** "Hello" opens as a native app on the phone, and `make test` runs the JUnit test.
 
