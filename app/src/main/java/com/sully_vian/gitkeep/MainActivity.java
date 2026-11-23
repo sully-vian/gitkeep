@@ -11,11 +11,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        findViewById(R.id.note1).setOnClickListener(v -> openNote());
-        findViewById(R.id.note2).setOnClickListener(v -> openNote());
+        findViewById(R.id.note1).setOnClickListener(v -> openNote(getString(R.string.note_1)));
+        findViewById(R.id.note2).setOnClickListener(v -> openNote(getString(R.string.note_2)));
     }
 
-    private void openNote() {
-        startActivity(new Intent(this, NoteActivity.class));
+    private void openNote(String title) {
+        Intent intent = new Intent(this, NoteActivity.class);
+        intent.putExtra(NoteActivity.EXTRA_TITLE, title);
+        startActivity(intent);
     }
 }
