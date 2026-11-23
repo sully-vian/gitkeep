@@ -50,16 +50,17 @@ So that saving a note without changes produces an identical file, and no git dif
 The app works with notes as `Note` objects:
 
 ```java
-public final class Note {
-    String path;                // "20261117-143052.md": identity, which file to write or delete
-    String title;               // "Meeting with the team"
-    List<String> tags;          // ["work", "meetings"]
-    OffsetDateTime createdAt;   // 2026-11-17T14:30:52+01:00
-    OffsetDateTime modifiedAt;  // read-only, from git; never written to the file
-    Map<String, Object> extra;  // unknown header keys (e.g. aliases), kept as-is, in their original order
-    String content;             // the body, in Markdown
-}
+public record Note(
+    String path,                // "20261117-143052.md": identity, which file to write or delete
+    String title,               // "Meeting with the team"
+    List<String> tags,          // ["work", "meetings"]
+    OffsetDateTime createdAt,   // 2026-11-17T14:30:52+01:00
+    OffsetDateTime modifiedAt,  // from git; never written to the file
+    Map<String, Object> extra,  // unknown header keys (e.g. aliases), kept as-is, in their original order
+    String content) {}          // the body, in Markdown
 ```
+
+A `Note` is immutable: changing a note means building a new one.
 
 `createdAt` is `null` when the header has no usable `created` value (no header, or a hand-written date without a time).
 
