@@ -1,6 +1,7 @@
 package com.sully_vian.gitkeep.core;
 
 import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -42,6 +43,12 @@ public final class NoteFormat {
      */
     private static final Pattern DELIMITER_LINE = Pattern.compile(
             "^" + DELIMITER + "$", Pattern.MULTILINE | Pattern.UNIX_LINES);
+
+    /** Always with seconds, never with fractions: "2026-11-17T14:30:52+01:00". */
+    private static final DateTimeFormatter CREATED_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+
+    /** Keys made of simple characters are written as is, others are quoted. */
+    private static final Pattern PLAIN_KEY = Pattern.compile("[A-Za-z0-9_-]+");
 
     private NoteFormat() {
     }
@@ -127,6 +134,83 @@ public final class NoteFormat {
     }
 
     /**
+     * Writes a note file. The rules below make the output stable: a file that
+     * already follows them is written back identically after {@link #parse}, so
+     * saving an unchanged note gives no git diff.
+     *
+     * <ul>
+     * <li>Keys in a fixed order: `title`, `tags` (left out when empty), `created`
+     * (left out when unknown), then {@link Note#extra} in its order. A known key
+     * held in `extra` because it was unreadable is written in its usual place,
+     * unless the note's field has been set since.
+     * <li>Strings always double-quoted, on a single line; lists as `["a", "b"]`.
+     * <li>`created` with seconds and offset, without fractions.
+     * <li>No header at all when the note has no title, tags, creation time or
+     * extra keys.
+     * <li>A blank line between the header and a non-empty body, and a final
+     * newline.
+     * <li>Comments in the header are not kept: the header is rebuilt from the
+     * note. A `comment` key can be used instead.
+     * </ul>
+     */
+    public static String serialize(Note note) {
+        String content = note.content();
+        if (!content.isEmpty() && !content.endsWith("\n")) {
+            content += "\n";
+        }
+
+        boolean hasHeader = !note.title().isEmpty()
+                || !note.tags().isEmpty()
+                || note.createdAt() != null
+                || !note.extra().isEmpty();
+        if (!hasHeader) {
+            return content;
+        }
+
+        Yaml yaml = yaml();
+        StringBuilder text = new StringBuilder(DELIMITER + "\n");
+
+        // known keys first, each from the note, or from extra when it was
+        // unreadable and hasn't been set since
+        Object title = note.title();
+        if (note.title().isEmpty() && note.extra().containsKey("title")) {
+            title = note.extra().get("title");
+        }
+        appendKey(text, yaml, "title", title);
+
+        if (!note.tags().isEmpty()) {
+            appendKey(text, yaml, "tags", note.tags());
+        } else if (note.extra().containsKey("tags")) {
+            appendKey(text, yaml, "tags", note.extra().get("tags"));
+        }
+
+        if (note.createdAt() != null) {
+            appendKey(text, yaml, "created", CREATED_FORMAT.format(note.createdAt()));
+        } else if (note.extra().containsKey("created")) {
+            appendKey(text, yaml, "created", note.extra().get("created"));
+        }
+
+        for (Map.Entry<String, Object> entry : note.extra().entrySet()) {
+            String key = entry.getKey();
+            if (key.equals("title") || key.equals("tags") || key.equals("created")) {
+                continue;
+            }
+            appendKey(text, yaml, key, entry.getValue());
+        }
+
+        text.append(DELIMITER + "\n");
+        if (!content.isEmpty()) {
+            text.append("\n").append(content);
+        }
+        return text.toString();
+    }
+
+    private static void appendKey(StringBuilder text, Yaml yaml, String key, Object value) {
+        String keyText = PLAIN_KEY.matcher(key).matches() ? key : yaml.dump(key).trim();
+        text.append(keyText).append(": ").append(yaml.dump(value).trim()).append("\n");
+    }
+
+    /**
      * Returns null when the header isn't a YAML mapping. An empty header is an
      * empty map.
      */
@@ -194,10 +278,17 @@ public final class NoteFormat {
      * `no`, `2026` or `2026-11-16` stay strings instead of becoming a boolean, a
      * number or a date.
      * Not thread-safe, hence one instance per call.
+     * When writing: flow style (`["a", "b"]`), every string double-quoted, on a
+     * single line, with Unicode written as is.
      */
     private static Yaml yaml() {
         LoaderOptions loaderOptions = new LoaderOptions();
         DumperOptions dumperOptions = new DumperOptions();
+        dumperOptions.setDefaultFlowStyle(DumperOptions.FlowStyle.FLOW);
+        dumperOptions.setDefaultScalarStyle(DumperOptions.ScalarStyle.DOUBLE_QUOTED);
+        dumperOptions.setAllowUnicode(true);
+        dumperOptions.setSplitLines(false);
+        dumperOptions.setWidth(Integer.MAX_VALUE);
         Resolver stringsOnly = new Resolver() {
             @Override
             protected void addImplicitResolvers() {

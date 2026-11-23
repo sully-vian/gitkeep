@@ -72,4 +72,4 @@ One class, `NoteFormat`, converts between a file's text and a `Note`:
 
 It uses SnakeYAML for the header and has no Android dependencies, so it runs in plain JVM unit tests (`./gradlew test`) against every file in `fixtures/`. It's the only place that knows the file format: the UI, the note store, git and sync all work with `Note` objects or raw text, never with YAML.
 
-SnakeYAML drops comments when it writes YAML, so a comment written by hand in a header is lost the first time the app saves that note. Either accept this, or have `serialize` update only the known keys in the original header text.
+Comments in the header are not kept: `serialize` rebuilds the header from the `Note`, so a comment written by hand is lost the first time the app saves that note. To keep a remark in the header, use a key instead, e.g. `comment: "..."`.

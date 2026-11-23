@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -117,6 +118,81 @@ class NoteFormatTest {
         assertEquals("draft", note.extra().get("status"));
         assertTrue(note.content().startsWith("The header has keys"), note.content());
         assertTrue(note.content().endsWith("Text after a horizontal rule.\n\n---\n"), note.content());
+    }
+
+    // --- serialize
+
+    /** Fixtures that don't follow the writing rules, tested separately below. */
+    private static final List<String> NOT_ROUND_TRIP = List.of(
+            "20261116-200000.md", // header comment
+            "20261116-200000-2.md"); // unquoted values
+
+    @ParameterizedTest
+    @MethodSource("fixtureNames")
+    void roundTripIsIdentical(String name) throws IOException {
+        if (NOT_ROUND_TRIP.contains(name)) {
+            return;
+        }
+        String text = Files.readString(FIXTURES.resolve(name), StandardCharsets.UTF_8);
+        assertEquals(text, NoteFormat.serialize(NoteFormat.parse(name, text)));
+    }
+
+    @Test
+    void headerCommentIsDropped() throws IOException {
+        String name = "20261116-200000.md";
+        String text = Files.readString(FIXTURES.resolve(name), StandardCharsets.UTF_8);
+        String expected = text.replace("# A comment written by hand in the header\n", "");
+        assertEquals(expected, NoteFormat.serialize(NoteFormat.parse(name, text)));
+    }
+
+    @Test
+    void unquotedValuesAreWrittenQuoted() throws IOException {
+        String serialized = NoteFormat.serialize(parseFixture("20261116-200000-2.md"));
+        assertTrue(serialized.startsWith("---\n"
+                + "title: \"no\"\n"
+                + "tags: [\"yes\", \"2026\", \"todo\"]\n"
+                + "created: \"2026-11-16\"\n"
+                + "---\n\n"), serialized);
+    }
+
+    @Test
+    void newNote() {
+        Note note = new Note(
+                "20261117-143052.md",
+                "Say \"hi\" \\ to 📝",
+                List.of("work"),
+                OffsetDateTime.parse("2026-11-17T14:30:00Z"),
+                null,
+                Map.of("my key", "x"),
+                "Body without final newline");
+        assertEquals("---\n"
+                + "title: \"Say \\\"hi\\\" \\\\ to 📝\"\n"
+                + "tags: [\"work\"]\n"
+                + "created: \"2026-11-17T14:30:00Z\"\n"
+                + "\"my key\": \"x\"\n"
+                + "---\n\n"
+                + "Body without final newline\n", NoteFormat.serialize(note));
+    }
+
+    @Test
+    void emptyNoteHasNoHeader() {
+        assertEquals("", NoteFormat.serialize(new Note("a.md")));
+    }
+
+    @Test
+    void multilineValueStaysOnOneLine() {
+        Note note = new Note("a.md", "two\nlines", null, null, null, null, null);
+        String serialized = NoteFormat.serialize(note);
+        assertEquals("---\ntitle: \"two\\nlines\"\n---\n", serialized);
+        assertEquals("two\nlines", NoteFormat.parse("a.md", serialized).title());
+    }
+
+    @Test
+    void settingTitleReplacesUnreadableOne() {
+        Note parsed = NoteFormat.parse("a.md", "---\ntitle: [a, b]\n---\n");
+        Note note = new Note(parsed.path(), "New", parsed.tags(), parsed.createdAt(),
+                parsed.modifiedAt(), parsed.extra(), parsed.content());
+        assertEquals("---\ntitle: \"New\"\n---\n", NoteFormat.serialize(note));
     }
 
     @Test
