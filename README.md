@@ -43,7 +43,7 @@ So that saving a note without changes produces an identical file, and no git dif
 
 - Keys are written in this order: `title`, `tags`, `created`, then any other keys.
 - Strings are always double-quoted. Unquoted YAML values are reinterpreted by parsers: `2026-11-17` becomes a date, and `no` or `yes` become booleans in YAML 1.1 parsers such as SnakeYAML.
-- Unknown keys (added by hand or by another tool, e.g. `aliases:`) are kept and written back unchanged, never dropped.
+- Unknown keys (added by hand or by another tool, e.g. `aliases:`) are kept and written back with the same values, never dropped. Their layout follows the rules above: a list written over several lines (`- a`) comes back as `["a"]`.
 
 ### In the app
 

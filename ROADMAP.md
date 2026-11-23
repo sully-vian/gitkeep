@@ -44,16 +44,16 @@ Every phase ends with something that runs on the phone. Git is introduced gradua
 
 ## Phase 1 — Note format (pure Java, no UI)
 
-- [ ] Copy `fixtures/` into `app/src/test/resources/fixtures/` (or point the tests at the top-level folder)
-- [ ] `Note` class: `path`, `title`, `tags`, `createdAt`, `extra` (unknown header keys), `content` (body)
-- [ ] `NoteFormat.parse(path, text)`: header delimited by `---` on the first line, body without the blank line after it, a file without a header is valid
-- [ ] `NoteFormat.serialize(note)`: fixed key order, strings double-quoted, unknown keys kept, LF line endings, final newline
-- [ ] Tests over every fixture:
+- [x] Copy `fixtures/` into `app/src/test/resources/fixtures/` (or point the tests at the top-level folder)
+- [x] `Note` class: `path`, `title`, `tags`, `createdAt`, `extra` (unknown header keys), `content` (body)
+- [x] `NoteFormat.parse(path, text)`: header delimited by `---` on the first line, body without the blank line after it, a file without a header is valid
+- [x] `NoteFormat.serialize(note)`: fixed key order, strings double-quoted, unknown keys kept, LF line endings, final newline
+- [x] Tests over every fixture:
   - parsing gives the expected title, tags and date
   - unquoted values (`title: no`, `tags: [yes, 2026]`, `created: 2026-11-16`) are read as strings
   - `---` lines in the body are not taken for the end of the header
   - parse → serialize gives back an identical file for files that already follow the writing rules
-- [ ] Decide what happens to comments in the header (SnakeYAML drops them when writing): accept the loss, or rewrite only the known keys in the original header text
+- [x] Decide what happens to comments in the header (SnakeYAML drops them when writing): accept the loss, or rewrite only the known keys in the original header text
 
 **Done when:** `make test` passes for all fixtures, including the edge cases.
 
