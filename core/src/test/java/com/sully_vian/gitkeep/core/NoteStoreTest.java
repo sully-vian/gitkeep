@@ -1,5 +1,6 @@
 package com.sully_vian.gitkeep.core;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,7 +9,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -124,5 +127,91 @@ class NoteStoreTest {
     @ValueSource(strings = { "../a.md", "sub/a.md", "sub\\a.md", ".hidden.md", "a.txt", "a" })
     void pathOutsideTheNotesIsRefused(String path) {
         assertThrows(IllegalArgumentException.class, () -> new NoteStore(dir).read(path));
+    }
+
+    // --- write
+
+    private static Note note(String path, String title, String content) {
+        return new Note(path, title, null, null, null, null, content);
+    }
+
+    /** Every file and folder in the notes folder, hidden ones included. */
+    private List<String> allFiles() throws IOException {
+        try (Stream<Path> files = Files.list(dir)) {
+            return files.map(p -> p.getFileName().toString()).sorted().toList();
+        }
+    }
+
+    @Test
+    void writtenNoteReadsBack() throws IOException {
+        NoteStore store = new NoteStore(dir);
+        Note note = new Note("20261117-143052.md", "Été 📝", List.of("work"),
+                OffsetDateTime.parse("2026-11-17T14:30:52+01:00"), null,
+                Map.of("status", "draft"), "Body\n");
+        store.write(note);
+        assertEquals(note, store.read("20261117-143052.md"));
+    }
+
+    @Test
+    void writesTheSerializedText() throws IOException {
+        Note note = note("a.md", "Été", "Body\n");
+        new NoteStore(dir).write(note);
+        assertArrayEquals(NoteFormat.serialize(note).getBytes(StandardCharsets.UTF_8),
+                Files.readAllBytes(dir.resolve("a.md")));
+    }
+
+    @Test
+    void writeCreatesTheFolder() throws IOException {
+        Path notes = dir.resolve("notes");
+        new NoteStore(notes).write(note("a.md", "x", ""));
+        assertTrue(Files.isRegularFile(notes.resolve("a.md")));
+    }
+
+    @Test
+    void writeReplacesTheFile() throws IOException {
+        NoteStore store = new NoteStore(dir);
+        store.write(note("a.md", "old", "old body\n"));
+        store.write(note("a.md", "new", "new body\n"));
+        assertEquals("new", store.read("a.md").title());
+        assertEquals(List.of("a.md"), allFiles());
+    }
+
+    @Test
+    void failedWriteLeavesNoTempFile() throws IOException {
+        // a folder where the note's file should be: the final rename fails
+        Files.createDirectory(dir.resolve("a.md"));
+        Files.writeString(dir.resolve("a.md/inside"), "");
+        assertThrows(IOException.class, () -> new NoteStore(dir).write(note("a.md", "x", "")));
+        assertEquals(List.of("a.md"), allFiles());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "../a.md", ".hidden.md", "a.txt" })
+    void writeOutsideTheNotesIsRefused(String path) throws IOException {
+        assertThrows(IllegalArgumentException.class,
+                () -> new NoteStore(dir).write(note(path, "x", "")));
+        assertTrue(allFiles().isEmpty());
+    }
+
+    // --- delete
+
+    @Test
+    void deleteRemovesTheFile() throws IOException {
+        file("a.md", "");
+        file("b.md", "");
+        new NoteStore(dir).delete("a.md");
+        assertEquals(List.of("b.md"), allFiles());
+    }
+
+    @Test
+    void deleteMissingNoteDoesNothing() throws IOException {
+        new NoteStore(dir).delete("missing.md");
+        assertTrue(allFiles().isEmpty());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = { "../a.md", ".hidden.md", "a.txt" })
+    void deleteOutsideTheNotesIsRefused(String path) {
+        assertThrows(IllegalArgumentException.class, () -> new NoteStore(dir).delete(path));
     }
 }

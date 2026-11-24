@@ -2,6 +2,7 @@ package com.sully_vian.gitkeep.core;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
@@ -10,6 +11,8 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -77,6 +80,53 @@ public final class NoteStore {
     public Note read(String path) throws IOException {
         byte[] bytes = Files.readAllBytes(resolve(path));
         return NoteFormat.parse(path, decodeUtf8(bytes));
+    }
+
+    /**
+     * Writes a note to its file, creating the folder if needed, and replacing the
+     * file if it exists.
+     *
+     * <p>
+     * Atomic: the text goes to a hidden temp file in the same folder, forced to
+     * the disk, then renamed over the note. A crash or a full disk leaves either
+     * the old file or the new one, never half a note. The temp file starts with
+     * "." so that {@link #list()} never takes it for a note.
+     *
+     * @throws IllegalArgumentException when the note's path isn't the name of a
+     *                                  note of this folder
+     * @throws IOException              when the file can't be written; the old
+     *                                  file, if any, is then unchanged
+     */
+    public void write(Note note) throws IOException {
+        Path file = resolve(note.path());
+        byte[] bytes = NoteFormat.serialize(note).getBytes(StandardCharsets.UTF_8);
+
+        Files.createDirectories(dir);
+        Path temp = Files.createTempFile(dir, ".", ".tmp");
+        try {
+            try (FileChannel channel = FileChannel.open(temp, StandardOpenOption.WRITE)) {
+                ByteBuffer buffer = ByteBuffer.wrap(bytes);
+                while (buffer.hasRemaining()) {
+                    channel.write(buffer);
+                }
+                channel.force(true);
+            }
+            Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE);
+        } finally {
+            // only still there when something failed
+            Files.deleteIfExists(temp);
+        }
+    }
+
+    /**
+     * Deletes a note's file. Deleting a note that doesn't exist does nothing.
+     *
+     * @throws IllegalArgumentException when the path isn't the name of a note of
+     *                                  this folder
+     * @throws IOException              when the file can't be deleted
+     */
+    public void delete(String path) throws IOException {
+        Files.deleteIfExists(resolve(path));
     }
 
     /**

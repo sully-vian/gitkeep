@@ -62,7 +62,7 @@ Every phase ends with something that runs on the phone. Git is introduced gradua
 Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per commit; steps 1 to 3 are pure Java in `core`, with JVM tests against a temporary folder.
 
 1. [x] `NoteStore` reading: constructor takes the folder; `list()` parses every `.md` file (other files and subfolders ignored), `read(path)` parses one. A file that can't be read is skipped by `list()`, never fatal.
-2. [ ] `NoteStore` writing: `write(note)` serializes to a temp file in the same folder, then renames it over the note (atomic: a crash never leaves half a note). `delete(path)`.
+2. [x] `NoteStore` writing: `write(note)` serializes to a temp file in the same folder, then renames it over the note (atomic: a crash never leaves half a note). `delete(path)`.
 3. [ ] New note names: `newPath(createdAt)` gives `YYYYMMDD-HHMMSS.md` in local time, with `-2`, `-3`… when the name is taken. Tests with a fixed time and existing files.
 4. [ ] Debug fixtures: the top-level `fixtures/` folder packaged as assets of debug builds only (Gradle, no copy committed). On launch, if the notes folder is empty, copy them in. Release builds have no such assets, so the copy does nothing. Check with `adb shell run-as com.sully_vian.gitkeep ls files/notes`.
 5. [ ] Note list: `MainActivity` shows a `RecyclerView` of titles (file name when the title is empty), newest first by `createdAt`, then by file name. Files read on a background thread, the list updated on the main thread.
