@@ -7,4 +7,8 @@
     <string name="title_hint">Title</string>
     <string name="body_hint">Note</string>
     <string name="new_note">New note</string>
+    <string name="delete">Delete</string>
+    <string name="note_deleted">Note deleted</string>
+    <string name="undo">Undo</string>
+    <string name="note_not_deleted">Couldn\'t delete this note</string>
 </resources>

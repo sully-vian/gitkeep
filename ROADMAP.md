@@ -70,7 +70,7 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 7. [x] Save: a few seconds after the last keystroke, and always in `onPause`, only when the title or body changed. Written off the main thread. The list reloads when it comes back to the foreground.
 8. [x] Logs: `java.util.logging` in `core` and `app` (still shown in logcat), plus a log file in `files/logs/`, size-capped with rotation, with crashes included. One line per event: notes listed, saved, deleted, errors with their stack trace. File names only, never note content, titles or credentials. `make logfile` prints it from a debug build.
 9. [x] Create a note: a "New" button opens an empty editor, with the file name and `created` chosen at that moment; the file is created on the first save. A new note left empty is never written.
-10. [ ] Delete: a menu item in the editor, with a confirmation dialog; back to the list afterwards.
+10. [x] Delete: swipe a note in the list (`ItemTouchHelper`), with "Undo" instead of a confirmation. The file is deleted when the message goes away or the list leaves the screen. A "Delete" action on each row for screen readers.
 
 **Done when:** notes can be created, edited and deleted on the phone, and are still there after force-closing the app.
 
