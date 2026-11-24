@@ -3,6 +3,7 @@ package com.sully_vian.gitkeep.core;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -58,8 +59,37 @@ public record Note(
         }
     }
 
+    /**
+     * Newest first: by creation time, then by file name, both descending. Notes
+     * without a creation time come last, sorted by file name too.
+     *
+     * <p>
+     * File names are compared without their ".md", so that "20261116-200000-2"
+     * (created after "20261116-200000" in the same second) comes first: with the
+     * extension, "-" sorts before ".", and the order would be reversed.
+     */
+    public static final Comparator<Note> NEWEST_FIRST = Comparator
+            .comparing(Note::createdAt, Comparator.nullsLast(Comparator.<OffsetDateTime>reverseOrder()))
+            .thenComparing(Note::pathWithoutExtension, Comparator.reverseOrder());
+
     /** An empty note: no header, no body. */
     public Note(String path) {
         this(path, null, null, null, null, null, null);
+    }
+
+    /** The title, or the file name when the title is empty, so that it's never blank in a list. */
+    public String displayTitle() {
+        if (title.isEmpty()) {
+            return path;
+        }
+        return title;
+    }
+
+    private String pathWithoutExtension() {
+        int dot = path.lastIndexOf('.');
+        if (dot == -1) {
+            return path;
+        }
+        return path.substring(0, dot);
     }
 }

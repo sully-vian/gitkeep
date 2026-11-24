@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One row of the note list: the note's title -->
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/title"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/selectableItemBackground"
+    android:ellipsize="end"
+    android:maxLines="1"
+    android:paddingHorizontal="16dp"
+    android:paddingVertical="16dp"
+    android:textAppearance="?attr/textAppearanceBodyLarge" />
