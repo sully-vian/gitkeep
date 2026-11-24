@@ -124,7 +124,7 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 - [ ] Filter by tag, combined with search
 - [ ] Search in titles and bodies (`SearchView`), case-insensitive, with a snippet around the match
 - [ ] Sort by modification date or creation date
-- [ ] Folders, or keep a flat structure
+- [x] Folders, or keep a flat structure: flat, notes at the root, subfolders ignored
 
 **Done when:** the app is used for real notes for a week without missing anything important.
 

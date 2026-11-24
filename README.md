@@ -12,6 +12,7 @@ The file name is the note's creation time, in local time: `YYYYMMDD-HHMMSS.md`, 
 - It never changes after creation, even when the title does. Renaming files would add noise to the git history and cause conflicts.
 - If the name already exists, add a suffix: `20261117-143052-2.md`.
 - The file name is the note's identity (`path` in the app). The title is only metadata.
+- Notes live at the root of the repository. Subfolders are ignored: the app never shows, changes or deletes the files in them. Tags take the role of folders.
 
 ### Content
 
