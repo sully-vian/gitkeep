@@ -13,6 +13,8 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -28,6 +30,9 @@ import java.util.List;
 public final class NoteStore {
 
     private static final String EXTENSION = ".md";
+
+    /** A new note's file name, without extension: "20261117-143052". */
+    private static final DateTimeFormatter NAME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
     private final Path dir;
 
@@ -127,6 +132,28 @@ public final class NoteStore {
      */
     public void delete(String path) throws IOException {
         Files.deleteIfExists(resolve(path));
+    }
+
+    /**
+     * A free file name for a new note: its creation time, "YYYYMMDD-HHMMSS.md",
+     * then "-2", "-3"… before the extension when that name is taken (by any file
+     * or folder).
+     *
+     * <p>
+     * The time is read as written in {@code createdAt}, in its own offset, not
+     * converted: a note created at 23:30 local time is named 23:30 wherever the
+     * name is read.
+     *
+     * <p>
+     * The name is free when this returns; write the note right away.
+     */
+    public String newPath(OffsetDateTime createdAt) {
+        String base = NAME_FORMAT.format(createdAt);
+        String name = base + EXTENSION;
+        for (int suffix = 2; Files.exists(dir.resolve(name)); suffix++) {
+            name = base + "-" + suffix + EXTENSION;
+        }
+        return name;
     }
 
     /**

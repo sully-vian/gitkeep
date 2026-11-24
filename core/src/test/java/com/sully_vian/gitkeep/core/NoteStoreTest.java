@@ -214,4 +214,65 @@ class NoteStoreTest {
     void deleteOutsideTheNotesIsRefused(String path) {
         assertThrows(IllegalArgumentException.class, () -> new NoteStore(dir).delete(path));
     }
+
+    // --- newPath
+
+    private static final OffsetDateTime CREATED = OffsetDateTime.parse("2026-11-17T14:30:52+01:00");
+
+    @Test
+    void newPathIsTheCreationTime() {
+        assertEquals("20261117-143052.md", new NoteStore(dir).newPath(CREATED));
+    }
+
+    @Test
+    void newPathPadsWithZeros() {
+        OffsetDateTime early = OffsetDateTime.parse("2026-01-02T03:04:05+01:00");
+        assertEquals("20260102-030405.md", new NoteStore(dir).newPath(early));
+    }
+
+    @Test
+    void newPathKeepsTheOffsetsLocalTime() {
+        // 23:30 in New York is already the next day in UTC: the name keeps 23:30
+        OffsetDateTime evening = OffsetDateTime.parse("2026-11-17T23:30:00-05:00");
+        assertEquals("20261117-233000.md", new NoteStore(dir).newPath(evening));
+    }
+
+    @Test
+    void newPathInMissingFolder() {
+        assertEquals("20261117-143052.md", new NoteStore(dir.resolve("missing")).newPath(CREATED));
+    }
+
+    @Test
+    void takenNameGetsASuffix() throws IOException {
+        file("20261117-143052.md", "");
+        assertEquals("20261117-143052-2.md", new NoteStore(dir).newPath(CREATED));
+    }
+
+    @Test
+    void suffixesCountUp() throws IOException {
+        file("20261117-143052.md", "");
+        file("20261117-143052-2.md", "");
+        file("20261117-143052-3.md", "");
+        assertEquals("20261117-143052-4.md", new NoteStore(dir).newPath(CREATED));
+    }
+
+    @Test
+    void freeBaseNameWinsOverSuffixes() throws IOException {
+        file("20261117-143052-2.md", "");
+        assertEquals("20261117-143052.md", new NoteStore(dir).newPath(CREATED));
+    }
+
+    @Test
+    void folderTakesTheName() throws IOException {
+        Files.createDirectory(dir.resolve("20261117-143052.md"));
+        assertEquals("20261117-143052-2.md", new NoteStore(dir).newPath(CREATED));
+    }
+
+    @Test
+    void newPathIsAValidNotePath() throws IOException {
+        NoteStore store = new NoteStore(dir);
+        String path = store.newPath(CREATED);
+        store.write(new Note(path, "x", null, CREATED, null, null, ""));
+        assertEquals("x", store.read(path).title());
+    }
 }
