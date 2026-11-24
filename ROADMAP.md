@@ -67,7 +67,7 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 4. [x] Debug fixtures: the top-level `fixtures/` folder packaged as assets of debug builds only (Gradle, no copy committed). On launch, if the notes folder is empty, copy them in. Release builds have no such assets, so the copy does nothing. Check with `adb shell run-as com.sully_vian.gitkeep ls files/notes`.
 5. [x] Note list: `MainActivity` shows a `RecyclerView` of titles (file name when the title is empty), newest first by `createdAt`, then by file name. Files read on a background thread, the list updated on the main thread.
 6. [x] Open a note: tapping a row opens `NoteActivity` with the note's path (replaces `EXTRA_TITLE`). Title field + monospace body field, filled from the file. No saving yet.
-7. [ ] Save: a few seconds after the last keystroke, and always in `onPause`, only when the title or body changed. Written off the main thread. The list reloads when it comes back to the foreground.
+7. [x] Save: a few seconds after the last keystroke, and always in `onPause`, only when the title or body changed. Written off the main thread. The list reloads when it comes back to the foreground.
 8. [ ] Create a note: a "New" button opens an empty editor; the file is created on the first save, with `created` set then. A new note left empty is never written.
 9. [ ] Delete: a menu item in the editor, with a confirmation dialog; back to the list afterwards.
 

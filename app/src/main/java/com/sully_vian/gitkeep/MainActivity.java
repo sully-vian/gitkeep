@@ -35,7 +35,17 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "fixtures not copied", e);
             }
         });
-        // same thread: runs after the fixtures are copied
+    }
+
+    /**
+     * Reloads the list each time it comes back on screen, e.g. after editing a
+     * note. Same I/O thread as the rest: runs after the fixtures are copied, and
+     * after the editor's last save.
+     */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        NoteStore store = Notes.store(this);
         Notes.IO.execute(() -> loadNotes(store));
     }
 
