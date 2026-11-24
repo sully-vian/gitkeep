@@ -22,7 +22,7 @@ tasks.named('test') {
     // The top-level fixtures/ folder, shared test data for the note format.
     systemProperty 'fixtures.dir', rootProject.file('fixtures').absolutePath
     testLogging {
-        events = ['failed']
+        events = ['passed', 'skipped', 'failed']
         exceptionFormat = 'full'
     }
 }

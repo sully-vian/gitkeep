@@ -15,7 +15,7 @@ build: ## Debug APK, no phone needed
 	$(GRADLEW) :app:assembleDebug
 
 test: ## JVM unit tests (no phone needed)
-	$(GRADLEW) test
+	$(GRADLEW) test --rerun
 
 install: ## Build and install the debug APK on the phone
 	$(GRADLEW) :app:installDebug
