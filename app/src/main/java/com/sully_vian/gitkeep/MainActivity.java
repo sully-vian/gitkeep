@@ -2,7 +2,6 @@ package com.sully_vian.gitkeep;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.RecyclerView;
@@ -10,11 +9,13 @@ import com.sully_vian.gitkeep.core.Note;
 import com.sully_vian.gitkeep.core.NoteStore;
 import java.io.IOException;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /** The note list, newest first. Tapping a note opens it. */
 public class MainActivity extends AppCompatActivity {
 
-    private static final String TAG = "gitkeep";
+    private static final Logger LOG = Logger.getLogger(MainActivity.class.getName());
 
     private final NoteAdapter adapter = new NoteAdapter(this::openNote);
 
@@ -30,9 +31,11 @@ public class MainActivity extends AppCompatActivity {
         Notes.IO.execute(() -> {
             try {
                 int copied = FixtureNotes.copyIfNoNotes(getAssets(), store, Notes.dir(this));
-                Log.i(TAG, "fixtures copied: " + copied);
+                if (copied > 0) {
+                    LOG.info("fixtures copied: " + copied);
+                }
             } catch (IOException e) {
-                Log.e(TAG, "fixtures not copied", e);
+                LOG.log(Level.SEVERE, "fixtures not copied", e);
             }
         });
     }
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
             notes.sort(Note.NEWEST_FIRST);
             runOnUiThread(() -> adapter.submitList(notes));
         } catch (IOException e) {
-            Log.e(TAG, "notes not listed", e);
+            LOG.log(Level.SEVERE, "notes not listed", e);
             runOnUiThread(() -> Toast.makeText(this, R.string.notes_not_listed, Toast.LENGTH_LONG).show());
         }
     }

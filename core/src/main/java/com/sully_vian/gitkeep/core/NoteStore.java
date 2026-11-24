@@ -18,6 +18,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The notes of one folder: every ".md" file directly in it is a note, and its
@@ -26,8 +28,13 @@ import java.util.List;
  *
  * <p>
  * Blocking file I/O: call it off the main thread.
+ *
+ * <p>
+ * Logs file names only, never what's in the notes.
  */
 public final class NoteStore {
+
+    private static final Logger LOG = Logger.getLogger(NoteStore.class.getName());
 
     private static final String EXTENSION = ".md";
 
@@ -57,6 +64,7 @@ public final class NoteStore {
                 }
             }
         } catch (NoSuchFileException e) {
+            LOG.info("no notes folder yet: " + dir);
             return new ArrayList<>();
         }
         Collections.sort(names);
@@ -67,8 +75,10 @@ public final class NoteStore {
                 notes.add(read(name));
             } catch (IOException e) {
                 // left out: one bad file must not hide the other notes
+                LOG.log(Level.WARNING, "skipped unreadable note: " + name, e);
             }
         }
+        LOG.info("listed " + notes.size() + " notes (" + (names.size() - notes.size()) + " skipped)");
         return notes;
     }
 
@@ -117,6 +127,7 @@ public final class NoteStore {
                 channel.force(true);
             }
             Files.move(temp, file, StandardCopyOption.ATOMIC_MOVE);
+            LOG.info("wrote " + note.path());
         } finally {
             // only still there when something failed
             Files.deleteIfExists(temp);
@@ -131,7 +142,9 @@ public final class NoteStore {
      * @throws IOException              when the file can't be deleted
      */
     public void delete(String path) throws IOException {
-        Files.deleteIfExists(resolve(path));
+        if (Files.deleteIfExists(resolve(path))) {
+            LOG.info("deleted " + path);
+        }
     }
 
     /**

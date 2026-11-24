@@ -4,7 +4,7 @@ APP_ID = com.sully_vian.gitkeep
 CYAN = $(shell tput setaf 6)
 RESET = $(shell tput sgr0)
 
-.PHONY: help build test install run logs clean
+.PHONY: help build test install run logs logfile clean
 
 .DEFAULT_GOAL := help
 
@@ -25,6 +25,9 @@ run: install ## Build, install and launch on the phone
 
 logs: ## Logs from the running app
 	adb logcat --pid $$(adb shell pidof -s $(APP_ID))
+
+logfile: ## The app's log file, oldest first (debug builds only)
+	adb shell run-as $(APP_ID) sh -c "'cd files/logs && for f in gitkeep.1.log gitkeep.0.log; do if [ -f \$$f ]; then cat \$$f; fi; done'"
 
 clean: ## Delete build outputs
 	$(GRADLEW) clean

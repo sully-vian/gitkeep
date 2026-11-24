@@ -68,8 +68,9 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 5. [x] Note list: `MainActivity` shows a `RecyclerView` of titles (file name when the title is empty), newest first by `createdAt`, then by file name. Files read on a background thread, the list updated on the main thread.
 6. [x] Open a note: tapping a row opens `NoteActivity` with the note's path (replaces `EXTRA_TITLE`). Title field + monospace body field, filled from the file. No saving yet.
 7. [x] Save: a few seconds after the last keystroke, and always in `onPause`, only when the title or body changed. Written off the main thread. The list reloads when it comes back to the foreground.
-8. [ ] Create a note: a "New" button opens an empty editor; the file is created on the first save, with `created` set then. A new note left empty is never written.
-9. [ ] Delete: a menu item in the editor, with a confirmation dialog; back to the list afterwards.
+8. [x] Logs: `java.util.logging` in `core` and `app` (still shown in logcat), plus a log file in `files/logs/`, size-capped with rotation, with crashes included. One line per event: notes listed, saved, deleted, errors with their stack trace. File names only, never note content, titles or credentials. `make logfile` prints it from a debug build.
+9. [ ] Create a note: a "New" button opens an empty editor; the file is created on the first save, with `created` set then. A new note left empty is never written.
+10. [ ] Delete: a menu item in the editor, with a confirmation dialog; back to the list afterwards.
 
 **Done when:** notes can be created, edited and deleted on the phone, and are still there after force-closing the app.
 
@@ -150,6 +151,7 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 - [ ] Empty states
 - [ ] App icon and splash screen
 - [ ] Export or open the notes folder, as a way out when sync is broken
+- [ ] "Share logs" button: sends the log file through the Android share menu, for troubleshooting
 - [ ] Release signing key (keep a backup!) and release APK, without the debug fixtures
 - [ ] Choose distribution: direct APK, F-Droid, or Play Store
 

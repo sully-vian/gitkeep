@@ -5,13 +5,14 @@ import android.os.Handler;
 import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.widget.EditText;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.sully_vian.gitkeep.core.Note;
 import com.sully_vian.gitkeep.core.NoteStore;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * The note editor: the title and the Markdown body of one note. Saves by
@@ -22,7 +23,7 @@ public class NoteActivity extends AppCompatActivity {
     /** The file name of the note to open, e.g. "20261117-143052.md". */
     public static final String EXTRA_PATH = "com.sully_vian.gitkeep.extra.PATH";
 
-    private static final String TAG = "gitkeep";
+    private static final Logger LOG = Logger.getLogger(NoteActivity.class.getName());
 
     /** How long after the last keystroke the note is saved. */
     private static final long SAVE_DELAY_MS = 2000;
@@ -49,6 +50,7 @@ public class NoteActivity extends AppCompatActivity {
 
         String path = getIntent().getStringExtra(EXTRA_PATH);
         if (path == null) {
+            LOG.warning("opened without a note path");
             finish();
             return;
         }
@@ -89,6 +91,7 @@ public class NoteActivity extends AppCompatActivity {
     private void loadNote(String path, boolean fillFields) {
         try {
             Note note = store.read(path);
+            LOG.info("opened " + path);
             runOnUiThread(() -> {
                 saved = note;
                 if (fillFields) {
@@ -97,7 +100,7 @@ public class NoteActivity extends AppCompatActivity {
                 }
             });
         } catch (IOException | IllegalArgumentException e) {
-            Log.e(TAG, "note not read: " + path, e);
+            LOG.log(Level.SEVERE, "note not read: " + path, e);
             runOnUiThread(() -> {
                 Toast.makeText(this, R.string.note_not_read, Toast.LENGTH_LONG).show();
                 finish();
@@ -124,7 +127,7 @@ public class NoteActivity extends AppCompatActivity {
             try {
                 store.write(edited);
             } catch (IOException e) {
-                Log.e(TAG, "note not saved: " + edited.path(), e);
+                LOG.log(Level.SEVERE, "note not saved: " + edited.path(), e);
                 runOnUiThread(() -> Toast.makeText(this, R.string.note_not_saved, Toast.LENGTH_LONG).show());
             }
         });
