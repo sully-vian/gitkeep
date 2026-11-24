@@ -1,5 +1,6 @@
 package com.sully_vian.gitkeep;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.Toast;
@@ -8,20 +9,14 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.sully_vian.gitkeep.core.Note;
 import com.sully_vian.gitkeep.core.NoteStore;
 import java.io.IOException;
-import java.nio.file.Path;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-/** The note list, newest first. */
+/** The note list, newest first. Tapping a note opens it. */
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "gitkeep";
 
-    /** File I/O, off the main thread. One thread: tasks run in order. */
-    private final ExecutorService io = Executors.newSingleThreadExecutor();
-
-    private final NoteAdapter adapter = new NoteAdapter();
+    private final NoteAdapter adapter = new NoteAdapter(this::openNote);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -31,24 +26,17 @@ public class MainActivity extends AppCompatActivity {
         RecyclerView notes = findViewById(R.id.notes);
         notes.setAdapter(adapter);
 
-        Path notesDir = getFilesDir().toPath().resolve("notes");
-        NoteStore store = new NoteStore(notesDir);
-        io.execute(() -> {
+        NoteStore store = Notes.store(this);
+        Notes.IO.execute(() -> {
             try {
-                int copied = FixtureNotes.copyIfNoNotes(getAssets(), store, notesDir);
+                int copied = FixtureNotes.copyIfNoNotes(getAssets(), store, Notes.dir(this));
                 Log.i(TAG, "fixtures copied: " + copied);
             } catch (IOException e) {
                 Log.e(TAG, "fixtures not copied", e);
             }
         });
         // same thread: runs after the fixtures are copied
-        io.execute(() -> loadNotes(store));
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        io.shutdown();
+        Notes.IO.execute(() -> loadNotes(store));
     }
 
     /** Runs on the I/O thread; the list is updated on the main thread. */
@@ -61,5 +49,11 @@ public class MainActivity extends AppCompatActivity {
             Log.e(TAG, "notes not listed", e);
             runOnUiThread(() -> Toast.makeText(this, R.string.notes_not_listed, Toast.LENGTH_LONG).show());
         }
+    }
+
+    private void openNote(Note note) {
+        Intent intent = new Intent(this, NoteActivity.class);
+        intent.putExtra(NoteActivity.EXTRA_PATH, note.path());
+        startActivity(intent);
     }
 }

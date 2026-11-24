@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 import com.sully_vian.gitkeep.core.Note;
+import java.util.function.Consumer;
 
 /**
  * Rows of the note list, one title per note. {@link #submitList} compares the
@@ -16,7 +17,10 @@ import com.sully_vian.gitkeep.core.Note;
  */
 final class NoteAdapter extends ListAdapter<Note, NoteAdapter.Row> {
 
-    NoteAdapter() {
+    private final Consumer<Note> onClick;
+
+    /** @param onClick called with the tapped note */
+    NoteAdapter(Consumer<Note> onClick) {
         super(new DiffUtil.ItemCallback<Note>() {
             @Override
             public boolean areItemsTheSame(@NonNull Note a, @NonNull Note b) {
@@ -29,13 +33,22 @@ final class NoteAdapter extends ListAdapter<Note, NoteAdapter.Row> {
                 return a.equals(b);
             }
         });
+        this.onClick = onClick;
     }
 
     @NonNull
     @Override
     public Row onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_note, parent, false);
-        return new Row(view);
+        Row row = new Row(view);
+        view.setOnClickListener(v -> {
+            // the row's current position: rows are reused for other notes
+            int position = row.getBindingAdapterPosition();
+            if (position != RecyclerView.NO_POSITION) {
+                onClick.accept(getItem(position));
+            }
+        });
+        return row;
     }
 
     @Override

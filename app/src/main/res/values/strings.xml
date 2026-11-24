@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">gitkeep</string>
-    <string name="note">Note</string>
     <string name="notes_not_listed">Couldn\'t read the notes</string>
+    <string name="note_not_read">Couldn\'t read this note</string>
+    <string name="title_hint">Title</string>
+    <string name="body_hint">Note</string>
 </resources>

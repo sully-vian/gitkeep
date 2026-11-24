@@ -28,7 +28,7 @@ final class FixtureNotes {
      * some fixtures deliberately don't follow the writing rules.
      *
      * <p>
-     * Blocking file I/O: call it off the main thread.
+     * Blocking file I/O: call it on {@link Notes#IO}.
      *
      * @return the number of fixtures copied
      */

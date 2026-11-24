@@ -1,12 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- The note editor: title on one line, then the Markdown body filling the rest -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
 
-    <TextView
-        android:layout_width="wrap_content"
+    <EditText
+        android:id="@+id/title"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/note"
-        android:id="@+id/title" />
+        android:hint="@string/title_hint"
+        android:importantForAutofill="no"
+        android:inputType="textCapSentences"
+        android:textAppearance="?attr/textAppearanceTitleLarge" />
 
-</FrameLayout>
+    <EditText
+        android:id="@+id/body"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="@null"
+        android:fontFamily="monospace"
+        android:gravity="top|start"
+        android:hint="@string/body_hint"
+        android:importantForAutofill="no"
+        android:inputType="textMultiLine|textCapSentences"
+        android:paddingTop="16dp"
+        android:scrollbars="vertical"
+        android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+</LinearLayout>
