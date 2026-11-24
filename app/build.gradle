@@ -20,6 +20,40 @@ android {
     }
 }
 
+/**
+ * Copies the top-level fixtures/ notes into a generated folder, as assets/fixtures/
+ * of the APK. Registered for debug builds only (below), so release builds never
+ * contain them.
+ */
+abstract class FixtureAssets extends DefaultTask {
+    @InputDirectory
+    abstract DirectoryProperty getFixtures()
+
+    @OutputDirectory
+    abstract DirectoryProperty getOutputDir()
+
+    @Inject
+    abstract FileSystemOperations getFiles()
+
+    @TaskAction
+    void copy() {
+        files.sync {
+            from(fixtures) { include '*.md' }
+            into(outputDir.dir('fixtures'))
+        }
+    }
+}
+
+def fixtureAssets = tasks.register('fixtureAssets', FixtureAssets) {
+    fixtures = rootProject.layout.projectDirectory.dir('fixtures')
+}
+
+androidComponents {
+    onVariants(selector().withBuildType('debug')) { variant ->
+        variant.sources.assets.addGeneratedSourceDirectory(fixtureAssets) { it.outputDir }
+    }
+}
+
 dependencies {
     implementation project(':core')
 
