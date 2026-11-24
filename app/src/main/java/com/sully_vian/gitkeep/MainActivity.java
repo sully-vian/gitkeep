@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/** The note list, newest first. Tapping a note opens it. */
+/** The note list, newest first. Tapping a note opens it; "New" starts one. */
 public class MainActivity extends AppCompatActivity {
 
     private static final Logger LOG = Logger.getLogger(MainActivity.class.getName());
@@ -26,6 +26,19 @@ public class MainActivity extends AppCompatActivity {
 
         RecyclerView notes = findViewById(R.id.notes);
         notes.setAdapter(adapter);
+        // a note added at the top (a new note) would otherwise stay above the
+        // visible rows: RecyclerView keeps showing the rows that were there
+        adapter.registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
+            @Override
+            public void onItemRangeInserted(int positionStart, int itemCount) {
+                if (positionStart == 0) {
+                    notes.scrollToPosition(0);
+                }
+            }
+        });
+        // no note path: the editor starts a new note
+        findViewById(R.id.new_note).setOnClickListener(
+                v -> startActivity(new Intent(this, NoteActivity.class)));
 
         NoteStore store = Notes.store(this);
         Notes.IO.execute(() -> {
