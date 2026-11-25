@@ -78,13 +78,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /**
-     * Reloads the list each time it comes back on screen, e.g. after editing a
-     * note. Same I/O thread as the rest: runs after the fixtures are copied, and
-     * after the editor's last save.
+     * Reloads the list each time it's back in front, e.g. after editing a note.
+     * onResume rather than onStart: an editor that closes at once (a note that
+     * can't be read) never fully hides the list, and onStart wouldn't run. Same
+     * I/O thread as the rest: runs after the fixtures are copied, and after the
+     * editor's last save.
      */
     @Override
-    protected void onStart() {
-        super.onStart();
+    protected void onResume() {
+        super.onResume();
         NoteStore store = Notes.store(this);
         Notes.IO.execute(() -> loadNotes(store));
     }
