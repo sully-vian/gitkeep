@@ -4,7 +4,7 @@ APP_ID = com.sully_vian.gitkeep
 CYAN = $(shell tput setaf 6)
 RESET = $(shell tput sgr0)
 
-.PHONY: help build test install run logs logfile clean
+.PHONY: help build test check install run logs logfile clean
 
 .DEFAULT_GOAL := help
 
@@ -16,6 +16,9 @@ build: ## Debug APK, no phone needed
 
 test: ## JVM unit tests (no phone needed)
 	$(GRADLEW) test --rerun
+
+check: ## Static analysis: list the warnings (NullAway)
+	$(GRADLEW) :core:compileJava --rerun :core:compileTestJava --rerun :app:compileDebugJavaWithJavac --rerun
 
 install: ## Build and install the debug APK on the phone
 	$(GRADLEW) :app:installDebug

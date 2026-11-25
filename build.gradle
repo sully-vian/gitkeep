@@ -1,4 +1,48 @@
 // Plugin versions for all modules. Each module applies the plugins it needs.
 plugins {
     id 'com.android.application' version '8.13.0' apply false
+    id 'net.ltgt.errorprone' version '5.2.0' apply false
+}
+
+// Null checking (`make check`): NullAway, which runs inside javac as an Error Prone check.
+// In a package marked @NullMarked (JSpecify, in package-info.java), nothing can be null
+// unless it's marked @Nullable. Every option that makes it stricter is on.
+subprojects {
+    plugins.withId('net.ltgt.errorprone') {
+        dependencies {
+            errorprone 'com.google.errorprone:error_prone_core:2.53.0'
+            errorprone 'com.uber.nullaway:nullaway:0.14.4'
+        }
+
+        tasks.withType(JavaCompile).configureEach {
+            options.errorprone {
+                enabled = true
+                // only NullAway's checks, not Error Prone's own
+                disableAllChecks = true
+
+                // warnings for now: don't fail the build
+                warn('NullAway')
+                // a class outside any @NullMarked package would silently not be checked
+                warn('RequireExplicitNullMarking')
+                // a @Nullable where it means nothing, e.g. on a local variable
+                warn('JSpecifyUnrecognizedAnnotationLocation')
+
+                option('NullAway:OnlyNullMarked', 'true')
+                // also check generics (List<@Nullable String>) and arrays
+                option('NullAway:JSpecifyMode', 'true')
+                // wildcards, the JDK's own nullness (Map.get...), and warn when a generic
+                // call can't be analyzed
+                option('NullAway:JSpecifyExperimental', 'true')
+                // trust the annotations of libraries (androidx, Material...) and of the Android SDK
+                option('NullAway:AcknowledgeRestrictiveAnnotations', 'true')
+                option('NullAway:AcknowledgeAndroidRecent', 'true')
+                // overrides without @Override, Optional.get() without a check, wrong @Contract
+                option('NullAway:ExhaustiveOverride', 'true')
+                option('NullAway:CheckOptionalEmptiness', 'true')
+                option('NullAway:CheckContracts', 'true')
+                // in tests, assertNotNull(x) proves that x isn't null
+                option('NullAway:HandleTestAssertionLibraries', 'true')
+            }
+        }
+    }
 }
