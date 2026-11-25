@@ -13,7 +13,6 @@ import com.sully_vian.gitkeep.core.NoteStore;
 import java.io.IOException;
 import java.nio.file.NoSuchFileException;
 import java.time.OffsetDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,11 +35,11 @@ public class NoteActivity extends AppCompatActivity {
 
     /**
      * Saved state across a rotation: the note's file name, so that a new note
-     * stays the same note instead of starting another one, and its creation time
-     * while it isn't written yet.
+     * stays the same note instead of starting another one, and whether it isn't
+     * written yet.
      */
     private static final String STATE_PATH = "path";
-    private static final String STATE_NEW_CREATED = "newCreated";
+    private static final String STATE_NEW = "new";
 
     private static final Logger LOG = Logger.getLogger(NoteActivity.class.getName());
 
@@ -72,13 +71,10 @@ public class NoteActivity extends AppCompatActivity {
 
         store = Notes.store(this);
         String path = getIntent().getStringExtra(EXTRA_PATH);
-        OffsetDateTime createdIfNew = null;
+        boolean notWrittenYet = false;
         if (savedInstanceState != null && savedInstanceState.getString(STATE_PATH) != null) {
             path = savedInstanceState.getString(STATE_PATH);
-            String created = savedInstanceState.getString(STATE_NEW_CREATED);
-            if (created != null) {
-                createdIfNew = OffsetDateTime.parse(created);
-            }
+            notWrittenYet = savedInstanceState.getBoolean(STATE_NEW);
         }
         if (path == null) {
             Notes.IO.execute(this::startNewNote);
@@ -86,9 +82,9 @@ public class NoteActivity extends AppCompatActivity {
             // after a rotation, the fields already hold what was typed: read the
             // note only to know what's on disk, without overwriting the fields
             String notePath = path;
-            OffsetDateTime created = createdIfNew;
+            boolean mayBeMissing = notWrittenYet;
             boolean fillFields = savedInstanceState == null;
-            Notes.IO.execute(() -> loadNote(notePath, created, fillFields));
+            Notes.IO.execute(() -> loadNote(notePath, mayBeMissing, fillFields));
         }
 
         TextWatcher saveWhenIdle = new TextWatcher() {
@@ -125,22 +121,18 @@ public class NoteActivity extends AppCompatActivity {
             return;
         }
         state.putString(STATE_PATH, saved.path());
-        if (!onDisk) {
-            state.putString(STATE_NEW_CREATED, saved.createdAt().toString());
-        }
+        state.putBoolean(STATE_NEW, !onDisk);
     }
 
     /**
-     * Runs on the I/O thread: picks a free file name from the current time, and
-     * starts from an empty note with that name and creation time. Nothing is
-     * written.
+     * Runs on the I/O thread: picks a free file name from the current time (the
+     * note's creation time), and starts from an empty note with that name.
+     * Nothing is written.
      */
     private void startNewNote() {
-        // seconds only: the file stores no fractions
-        OffsetDateTime created = OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
-        String path = store.newPath(created);
+        String path = store.newPath(OffsetDateTime.now());
         LOG.info("new note " + path);
-        Note empty = new Note(path, null, null, created, null, null, null);
+        Note empty = new Note(path);
         runOnUiThread(() -> {
             saved = empty;
             onDisk = false;
@@ -151,11 +143,11 @@ public class NoteActivity extends AppCompatActivity {
     /**
      * Runs on the I/O thread; the fields are filled on the main thread.
      *
-     * @param createdIfNew for a new note that may not be written yet: when its
-     *                     file doesn't exist, start from an empty note with that
-     *                     creation time instead of failing. Null otherwise.
+     * @param mayBeMissing for a new note that may not be written yet: when its
+     *                     file doesn't exist, start from an empty note instead of
+     *                     failing
      */
-    private void loadNote(String path, OffsetDateTime createdIfNew, boolean fillFields) {
+    private void loadNote(String path, boolean mayBeMissing, boolean fillFields) {
         try {
             Note note;
             boolean exists = true;
@@ -163,10 +155,10 @@ public class NoteActivity extends AppCompatActivity {
                 note = store.read(path);
                 LOG.info("opened " + path);
             } catch (NoSuchFileException e) {
-                if (createdIfNew == null) {
+                if (!mayBeMissing) {
                     throw e;
                 }
-                note = new Note(path, null, null, createdIfNew, null, null, null);
+                note = new Note(path);
                 exists = false;
             }
             Note loaded = note;
@@ -190,15 +182,14 @@ public class NoteActivity extends AppCompatActivity {
 
     /**
      * Writes the fields to the note's file, on the I/O thread, when they differ
-     * from what's on disk. Everything else in the note (tags, creation time,
-     * other header keys) is kept as it was read.
+     * from what's on disk. Everything else in the note (tags, other header keys)
+     * is kept as it was read.
      */
     private void save() {
         if (saved == null) {
             return;
         }
-        Note edited = new Note(saved.path(), title.getText().toString(), saved.tags(),
-                saved.createdAt(), saved.modifiedAt(), saved.extra(), body.getText().toString());
+        Note edited = saved.withTitle(title.getText().toString()).withContent(body.getText().toString());
         if (edited.equals(saved)) {
             return;
         }

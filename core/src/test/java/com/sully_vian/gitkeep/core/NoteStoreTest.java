@@ -132,7 +132,7 @@ class NoteStoreTest {
     // --- write
 
     private static Note note(String path, String title, String content) {
-        return new Note(path, title, null, null, null, null, content);
+        return new Note(path).withTitle(title).withContent(content);
     }
 
     /** Every file and folder in the notes folder, hidden ones included. */
@@ -146,7 +146,6 @@ class NoteStoreTest {
     void writtenNoteReadsBack() throws IOException {
         NoteStore store = new NoteStore(dir);
         Note note = new Note("20261117-143052.md", "Été 📝", List.of("work"),
-                OffsetDateTime.parse("2026-11-17T14:30:52+01:00"), null,
                 Map.of("status", "draft"), "Body\n");
         store.write(note);
         assertEquals(note, store.read("20261117-143052.md"));
@@ -272,7 +271,7 @@ class NoteStoreTest {
     void newPathIsAValidNotePath() throws IOException {
         NoteStore store = new NoteStore(dir);
         String path = store.newPath(CREATED);
-        store.write(new Note(path, "x", null, CREATED, null, null, ""));
+        store.write(new Note(path).withTitle("x"));
         assertEquals("x", store.read(path).title());
     }
 }

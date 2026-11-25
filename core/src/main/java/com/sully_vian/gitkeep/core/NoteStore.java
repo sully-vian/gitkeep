@@ -41,6 +41,7 @@ public final class NoteStore {
     /** A new note's file name, without extension: "20261117-143052". */
     private static final DateTimeFormatter NAME_FORMAT = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
 
+
     private final Path dir;
 
     public NoteStore(Path dir) {

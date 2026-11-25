@@ -2,7 +2,6 @@ package com.sully_vian.gitkeep.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -10,7 +9,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +47,6 @@ class NoteFormatTest {
         assertNotNull(note.tags());
         assertNotNull(note.extra());
         assertNotNull(note.content());
-        assertNull(note.modifiedAt());
     }
 
     // --- regular fixtures
@@ -59,7 +56,6 @@ class NoteFormatTest {
         Note note = parseFixture("20261101-090000.md");
         assertEquals("Welcome to gitkeep", note.title());
         assertEquals(List.of("gitkeep"), note.tags());
-        assertEquals(OffsetDateTime.parse("2026-11-01T09:00:00+01:00"), note.createdAt());
         assertTrue(note.extra().isEmpty());
         assertTrue(note.content().startsWith("Notes are plain **Markdown** files"), note.content());
     }
@@ -84,7 +80,6 @@ class NoteFormatTest {
         Note note = parseFixture("20261115-075959.md");
         assertEquals("", note.title());
         assertTrue(note.tags().isEmpty());
-        assertNull(note.createdAt());
         assertEquals("", note.content());
     }
 
@@ -94,7 +89,6 @@ class NoteFormatTest {
         Note note = parseFixture(name);
         assertEquals("", note.title());
         assertTrue(note.tags().isEmpty());
-        assertNull(note.createdAt());
         assertTrue(note.extra().isEmpty());
         assertEquals(Files.readString(FIXTURES.resolve(name), StandardCharsets.UTF_8), note.content());
     }
@@ -104,8 +98,7 @@ class NoteFormatTest {
         Note note = parseFixture("20261116-200000-2.md");
         assertEquals("no", note.title());
         assertEquals(List.of("yes", "2026", "todo"), note.tags());
-        // a date without a time isn't a usable creation time, but is kept as written
-        assertNull(note.createdAt());
+        // dates aren't read from notes: `created` is an unknown key, kept as written
         assertEquals("2026-11-16", note.extra().get("created"));
     }
 
@@ -161,14 +154,11 @@ class NoteFormatTest {
                 "20261117-143052.md",
                 "Say \"hi\" \\ to 📝",
                 List.of("work"),
-                OffsetDateTime.parse("2026-11-17T14:30:00Z"),
-                null,
                 Map.of("my key", "x"),
                 "Body without final newline");
         assertEquals("---\n"
                 + "title: \"Say \\\"hi\\\" \\\\ to 📝\"\n"
                 + "tags: [\"work\"]\n"
-                + "created: \"2026-11-17T14:30:00Z\"\n"
                 + "\"my key\": \"x\"\n"
                 + "---\n\n"
                 + "Body without final newline\n", NoteFormat.serialize(note));
@@ -181,7 +171,7 @@ class NoteFormatTest {
 
     @Test
     void multilineValueStaysOnOneLine() {
-        Note note = new Note("a.md", "two\nlines", null, null, null, null, null);
+        Note note = new Note("a.md").withTitle("two\nlines");
         String serialized = NoteFormat.serialize(note);
         assertEquals("---\ntitle: \"two\\nlines\"\n---\n", serialized);
         assertEquals("two\nlines", NoteFormat.parse("a.md", serialized).title());
@@ -190,15 +180,14 @@ class NoteFormatTest {
     @Test
     void settingTitleReplacesUnreadableOne() {
         Note parsed = NoteFormat.parse("a.md", "---\ntitle: [a, b]\n---\n");
-        Note note = new Note(parsed.path(), "New", parsed.tags(), parsed.createdAt(),
-                parsed.modifiedAt(), parsed.extra(), parsed.content());
+        Note note = parsed.withTitle("New");
         assertEquals("---\ntitle: \"New\"\n---\n", NoteFormat.serialize(note));
     }
 
     @Test
     void noteIsImmutable() {
         List<String> tags = new ArrayList<>(List.of("work"));
-        Note note = new Note("a.md", null, tags, null, null, null, null);
+        Note note = new Note("a.md", "", tags, Map.of(), "");
         tags.add("later");
         assertEquals(List.of("work"), note.tags());
         assertThrows(UnsupportedOperationException.class, () -> note.tags().add("x"));
@@ -206,12 +195,19 @@ class NoteFormatTest {
     }
 
     @Test
-    void nullsBecomeEmpty() {
+    void emptyNoteHasEmptyValues() {
         Note note = new Note("a.md");
         assertEquals("", note.title());
         assertTrue(note.tags().isEmpty());
         assertTrue(note.extra().isEmpty());
         assertEquals("", note.content());
+    }
+
+    @Test
+    @SuppressWarnings("NullAway") // passes null on purpose
+    void nullIsRejected() {
+        assertThrows(NullPointerException.class,
+                () -> new Note("a.md", null, List.of(), Map.of(), ""));
     }
 
     // --- inline cases, not worth a fixture

@@ -20,7 +20,6 @@ The file name is the note's creation time, in local time: `YYYYMMDD-HHMMSS.md`, 
 ---
 title: "Meeting with the team"
 tags: ["work", "meetings"]
-created: "2026-11-17T14:30:52+01:00"
 ---
 
 The note's body, in Markdown.
@@ -29,20 +28,22 @@ The note's body, in Markdown.
 - The header starts at the very first line with `---` and ends at the next `---` line.
 - `title`: string. Can be empty.
 - `tags`: list of strings, without `#`. Can be omitted when empty.
-- `created`: full ISO 8601 timestamp with timezone. Set once, never changed.
 - The body is everything after the closing `---`, without the blank line that follows it.
 - Files are UTF-8, with LF line endings and a final newline.
-- A file without a header is still a valid note: empty title, no tags, creation time unknown.
+- A file without a header is still a valid note: empty title, no tags.
 
 ### What is *not* stored in the file
 
+Dates. The header holds what only the note can say: its title and tags.
+
+- **Creation time.** A note made by the app is named after it. For other notes, git knows when the file first appeared (`git log --diff-filter=A --format=%aI -- <file>`). A `created:` line already in a file is kept as an unknown key, but the app doesn't read it.
 - **Modification time.** Git already records it (`git log -1 --format=%cI -- <file>`). A `modified:` line rewritten on every save would make every note edited on two devices conflict on that line, even when the edits themselves are in different paragraphs that git could merge on its own.
 
 ### Writing rules
 
 So that saving a note without changes produces an identical file, and no git diff:
 
-- Keys are written in this order: `title`, `tags`, `created`, then any other keys.
+- Keys are written in this order: `title`, `tags`, then any other keys.
 - Strings are always double-quoted. Unquoted YAML values are reinterpreted by parsers: `2026-11-17` becomes a date, and `no` or `yes` become booleans in YAML 1.1 parsers such as SnakeYAML.
 - Unknown keys (added by hand or by another tool, e.g. `aliases:`) are kept and written back with the same values, never dropped. Their layout follows the rules above: a list written over several lines (`- a`) comes back as `["a"]`.
 
@@ -52,18 +53,14 @@ The app works with notes as `Note` objects:
 
 ```java
 public record Note(
-    String path,                // "20261117-143052.md": identity, which file to write or delete
-    String title,               // "Meeting with the team"
-    List<String> tags,          // ["work", "meetings"]
-    OffsetDateTime createdAt,   // 2026-11-17T14:30:52+01:00
-    OffsetDateTime modifiedAt,  // from git; never written to the file
-    Map<String, Object> extra,  // unknown header keys (e.g. aliases), kept as-is, in their original order
-    String content) {}          // the body, in Markdown
+    String path,                          // "20261117-143052.md": identity, which file to write or delete
+    String title,                         // "Meeting with the team"
+    List<String> tags,                    // ["work", "meetings"]
+    Map<String, @Nullable Object> extra,  // unknown header keys (e.g. aliases), kept as-is, in their original order
+    String content) {}                    // the body, in Markdown
 ```
 
-A `Note` is immutable: changing a note means building a new one.
-
-`createdAt` is `null` when the header has no usable `created` value (no header, or a hand-written date without a time).
+A `Note` is immutable: changing a note means building a new one. Nothing in it is `null`: an empty title, tag list or body is an empty value.
 
 ### Where the conversion happens
 
