@@ -1,4 +1,7 @@
 # gitkeep
+
+[![CI](https://github.com/sully-vian/gitkeep/actions/workflows/ci.yml/badge.svg)](https://github.com/sully-vian/gitkeep/actions/workflows/ci.yml)
+
 A simple git-based note-taking app for Android, written in Java
 
 ## Note format

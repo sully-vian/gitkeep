@@ -1,0 +1,56 @@
+# Runs the JVM tests and builds the debug APK, on every push to main and every pull
+# request. NullAway runs inside the compilation, so a null error fails it too.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# a new push cancels the run still going for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      # JDK 21: gradle/gradle-daemon-jvm.properties asks for it
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 21
+
+      # caches Gradle downloads between runs, and checks the wrapper jar
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Tests
+        run: make test
+
+      # the runner has the Android SDK; missing parts are downloaded by the build
+      - name: Debug APK
+        run: make build
+
+      - name: Upload the debug APK
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitkeep-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 2
+
+      - name: Upload the reports
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reports
+          path: |
+            core/build/reports/tests/
+            build/reports/problems/
+          retention-days: 2

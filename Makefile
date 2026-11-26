@@ -1,8 +1,8 @@
 SHELL = bash
 GRADLEW = ./gradlew
 APP_ID = com.sully_vian.gitkeep
-CYAN = $(shell tput setaf 6)
-RESET = $(shell tput sgr0)
+CYAN = $(shell tput setaf 6 2>/dev/null)
+RESET = $(shell tput sgr0 2>/dev/null)
 
 .PHONY: help build test check install run logs logfile clean
 
