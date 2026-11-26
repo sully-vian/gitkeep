@@ -75,3 +75,12 @@ One class, `NoteFormat`, converts between a file's text and a `Note`:
 It uses SnakeYAML for the header and has no Android dependencies, so it runs in plain JVM unit tests (`./gradlew test`) against every file in `fixtures/`. It's the only place that knows the file format: the UI, the note store, git and sync all work with `Note` objects or raw text, never with YAML.
 
 Comments in the header are not kept: `serialize` rebuilds the header from the `Note`, so a comment written by hand is lost the first time the app saves that note. To keep a remark in the header, use a key instead, e.g. `comment: "..."`.
+
+## Git library
+
+The app uses [JGit](https://www.eclipse.org/jgit/) **5.13.x**, the last version built for Java 8, not the current 7.x.
+
+- **Why not 7.x:** it calls Java methods that Android only has from API 33 (`InputStream.readAllBytes`, `readNBytes`…), and neither Android's build tools nor its desugaring library provide them. One of them is on the path of `git add` whenever a file's line endings are converted (`.gitattributes` with `eol=lf`), so it would crash on phones older than Android 13, while `minSdk` is 26 (Android 8).
+- **How this was checked:** every Java method that JGit's code in the APK calls was looked up in Android's own API table (`platforms/android-*/data/api-versions.xml`). With 5.13.5, nothing needs more than API 26. Then a real init, add, commit, status and log ran on an Android 12 phone, and the resulting repository passed `git fsck`.
+- **What 5.13.x still lacks on Android:** Java's monitoring classes and process handles, used only by JGit's garbage collector and statistics. The app turns automatic garbage collection off (`gc.auto = 0`).
+- **Moving to a newer JGit** means running the same check again, or raising `minSdk` to 33.

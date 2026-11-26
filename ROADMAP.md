@@ -91,7 +91,7 @@ Postponed: not needed for a first usable version. Phases 4 to 6 come first.
 
 The notes folder becomes a git repository. One step per commit; steps 2 and 3 are pure Java in `core`, with JVM tests against a temporary folder.
 
-1. [ ] Choose the JGit version (spike): add JGit 7.x to `core`, then check the code that ends up in the APK against Android's API levels (`minSdk` 26): Java methods that the build tools don't rewrite would crash on older phones. Fix what's needed (`coreLibraryDesugaring`, `gc.auto = 0`), and run a real init and commit on the phone. Fall back to JGit 5.13.x (Java 8) if 7.x can't be made safe. Write the decision in the README.
+1. [x] Choose the JGit version (spike): add JGit 7.x to `core`, then check the code that ends up in the APK against Android's API levels (`minSdk` 26): Java methods that the build tools don't rewrite would crash on older phones. Fix what's needed (`coreLibraryDesugaring`, `gc.auto = 0`), and run a real init and commit on the phone. Fall back to JGit 5.13.x (Java 8) if 7.x can't be made safe. Write the decision in the README.
 2. [ ] `GitRepo`: opens the repository of the notes folder, or creates it, with a `.gitattributes` forcing LF line endings.
 3. [ ] Commit: `GitRepo.commit(…)` stages the notes that changed or were deleted, and does nothing when nothing changed. Messages name the files (`Edit 20261124-015725.md`), not the titles.
 4. [ ] The app commits: repository set up at launch; a commit when leaving the editor, after a delete (once "Undo" is gone), and after the fixtures are copied. Not after each autosave. Author: a default (`gitkeep`) until the settings of Phase 5.
