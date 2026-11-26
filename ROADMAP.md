@@ -110,8 +110,8 @@ The repository is synced with a remote host over HTTPS, with a personal access t
 3. [x] Conflicts, until Phase 6: a merge with conflicts is undone (the repository goes back to its last commit, local notes untouched), nothing is pushed, and the status names the files. A repository left in the middle of a merge (app killed) is reset when opened.
 4. [x] Settings screen (`androidx.preference`), from the list's menu: repository URL, username, token, author name and email. The author applies to the next commit; empty fields fall back to `gitkeep <gitkeep@localhost>`.
 5. [x] The token encrypted with an Android Keystore key, never in plain `SharedPreferences`. A token that can't be decrypted (e.g. after a restore on another phone) counts as not set.
-6. [ ] Sync button in the list's app bar, status as its subtitle ("Synced 2 minutes ago", "Syncing…", "Offline", "Error: …"). Sync only starts from the list, so only the list reloads after a pull changed notes.
-7. [ ] Check against a real remote (a throwaway GitHub repository).
+6. [x] Sync button in the list's app bar, status as its subtitle ("Synced 2 minutes ago", "Syncing…", "Offline", "Error: …"). Sync only starts from the list, so only the list reloads after a pull changed notes.
+7. [x] Check against a real remote (a throwaway GitHub repository).
 
 **Done when:** an edit on the phone shows up on GitHub/Gitea, and an edit made on the computer shows up on the phone after tapping Sync.
 

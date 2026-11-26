@@ -23,4 +23,13 @@
     <string name="settings_author">Author of the commits</string>
     <string name="settings_author_name">Name</string>
     <string name="settings_author_email">Email</string>
+    <string name="sync">Sync</string>
+    <string name="sync_running">Syncing…</string>
+    <string name="sync_not_set_up">Sync not set up</string>
+    <string name="sync_never">Never synced</string>
+    <string name="sync_ok">Synced %1$s</string>
+    <string name="sync_offline">Offline</string>
+    <string name="sync_auth">Error: wrong username or token</string>
+    <string name="sync_conflict">Error: conflict in %1$s</string>
+    <string name="sync_error">Error: %1$s</string>
 </resources>

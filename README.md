@@ -129,6 +129,10 @@ Fetching and pushing run on a thread of their own, committing and merging on the
 
 A sync ends with one of: done, offline (the host can't be reached), credentials refused, conflict, or another error with a short explanation. Credentials written in the URL (`https://user:token@…`) are refused: they would be saved in the repository's config in clear. The token is never logged; the sync's own log lines name the host only.
 
+### In the app
+
+The Sync button is in the list's app bar; while the remote isn't set up, it opens the settings. The app bar's subtitle tells how the last sync ended: "Synced 2 minutes ago", "Syncing…", "Offline" (checked before trying, so no time is lost waiting for the network), "Error: wrong username or token", "Error: conflict in …", or "Error: …". The list reloads after every sync. Sync only starts from the list, so no note is open while a sync changes the notes.
+
 ### Settings and the token
 
 The settings screen (list menu → Settings) holds the repository's HTTPS URL, the username, the personal access token, and the author of the commits. The author applies to the next commit; left empty, it is `gitkeep <gitkeep@localhost>`.

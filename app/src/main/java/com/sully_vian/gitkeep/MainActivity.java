@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.Toast;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.RecyclerView;
@@ -12,12 +13,14 @@ import com.google.android.material.snackbar.BaseTransientBottomBar;
 import com.google.android.material.snackbar.Snackbar;
 import com.sully_vian.gitkeep.core.Note;
 import com.sully_vian.gitkeep.core.NoteStore;
+import com.sully_vian.gitkeep.core.SyncManager;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -46,6 +49,9 @@ public class MainActivity extends AppCompatActivity {
 
     /** When each note was last committed, by path, as last read. Only used on the main thread. */
     private Map<String, Instant> lastEdits = new HashMap<>();
+
+    /** Whether a sync started from this screen is running. Only used on the main thread. */
+    private boolean syncing;
 
     /** Swiped away, but still on disk: "Undo" is showing. Null when there's none. */
     private @Nullable Note pendingDelete;
@@ -101,6 +107,12 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         NoteStore store = Notes.store(this);
         Notes.IO.execute(() -> loadNotes(store));
+        // a sync started before a rotation, or still running from earlier
+        CompletableFuture<SyncManager.Result> running = Notes.runningSync();
+        if (running != null) {
+            followSync(running);
+        }
+        showSyncStatus();
     }
 
     /** Leaving the list (a note opened, home, rotation) ends the chance to undo. */
@@ -215,11 +227,50 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == R.id.sync) {
+            sync();
+            return true;
+        }
         if (item.getItemId() == R.id.settings) {
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    /** Syncs, or opens the settings while the remote isn't set up. */
+    private void sync() {
+        SyncManager.Remote remote = Settings.remote(this);
+        if (remote == null) {
+            startActivity(new Intent(this, SettingsActivity.class));
+            return;
+        }
+        // nothing waiting for "Undo" stays out of the sync
+        commitDelete();
+        followSync(Notes.sync(this, remote));
+    }
+
+    /** Shows "Syncing…" until the sync ends, then its result, and the notes it brought. */
+    private void followSync(CompletableFuture<SyncManager.Result> sync) {
+        syncing = true;
+        showSyncStatus();
+        sync.thenAccept(result -> runOnUiThread(() -> {
+            if (isDestroyed()) {
+                return;
+            }
+            syncing = false;
+            showSyncStatus();
+            // also for a sync without remote changes: its commits change the dates
+            NoteStore store = Notes.store(this);
+            Notes.IO.execute(() -> loadNotes(store));
+        }));
+    }
+
+    private void showSyncStatus() {
+        ActionBar bar = getSupportActionBar();
+        if (bar != null) {
+            bar.setSubtitle(SyncStatus.line(this, syncing));
+        }
     }
 
     private void openNote(Note note) {
