@@ -59,7 +59,12 @@ public final class NoteStore {
         List<String> names = new ArrayList<>();
         try (DirectoryStream<Path> files = Files.newDirectoryStream(dir)) {
             for (Path file : files) {
-                String name = file.getFileName().toString();
+                // entries listed from a folder always have a name
+                Path fileName = file.getFileName();
+                if (fileName == null) {
+                    continue;
+                }
+                String name = fileName.toString();
                 if (isNoteName(name) && Files.isRegularFile(file)) {
                     names.add(name);
                 }

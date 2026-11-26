@@ -15,6 +15,7 @@ import java.nio.file.NoSuchFileException;
 import java.time.OffsetDateTime;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The note editor: the title and the Markdown body of one note. Saves by
@@ -57,13 +58,13 @@ public class NoteActivity extends AppCompatActivity {
      * The note as it is on disk (as last read or written). Null until the note
      * is read: nothing is saved before that. Only used on the main thread.
      */
-    private Note saved;
+    private @Nullable Note saved;
 
     /** False for a new note until its first write. Only used on the main thread. */
     private boolean onDisk;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_note);
         title = findViewById(R.id.title);

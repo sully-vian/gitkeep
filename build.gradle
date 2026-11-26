@@ -20,12 +20,12 @@ subprojects {
                 // only NullAway's checks, not Error Prone's own
                 disableAllChecks = true
 
-                // warnings for now: don't fail the build
-                warn('NullAway')
+                // errors: a null mistake fails the build
+                error('NullAway')
                 // a class outside any @NullMarked package would silently not be checked
-                warn('RequireExplicitNullMarking')
+                error('RequireExplicitNullMarking')
                 // a @Nullable where it means nothing, e.g. on a local variable
-                warn('JSpecifyUnrecognizedAnnotationLocation')
+                error('JSpecifyUnrecognizedAnnotationLocation')
 
                 option('NullAway:OnlyNullMarked', 'true')
                 // also check generics (List<@Nullable String>) and arrays

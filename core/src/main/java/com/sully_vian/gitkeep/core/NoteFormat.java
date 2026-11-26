@@ -114,7 +114,7 @@ public final class NoteFormat {
      * on the very first line, and close at the next line that is exactly "---".
      * The blank line after the header isn't part of the body.
      */
-    private static Split splitHeader(String text) {
+    private static @Nullable Split splitHeader(String text) {
         Matcher delimiter = DELIMITER_LINE.matcher(text);
         if (!delimiter.find() || delimiter.start() != 0) {
             return null;
@@ -203,7 +203,7 @@ public final class NoteFormat {
      * Returns null when the header isn't a YAML mapping. An empty header is an
      * empty map.
      */
-    private static Map<String, @Nullable Object> loadHeader(String yamlText) {
+    private static @Nullable Map<String, @Nullable Object> loadHeader(String yamlText) {
         Object loaded;
         try {
             loaded = yaml().load(yamlText);
@@ -224,7 +224,7 @@ public final class NoteFormat {
     }
 
     /** Returns null when the value isn't a string. */
-    private static String readTitle(@Nullable Object value) {
+    private static @Nullable String readTitle(@Nullable Object value) {
         if (!(value instanceof String)) {
             return null;
         }
@@ -232,7 +232,7 @@ public final class NoteFormat {
     }
 
     /** Returns null when the value isn't a list of strings. */
-    private static List<String> readTags(@Nullable Object value) {
+    private static @Nullable List<String> readTags(@Nullable Object value) {
         if (!(value instanceof List)) {
             return null;
         }

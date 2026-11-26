@@ -19,7 +19,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 class NoteFormatTest {
 
-    private static final Path FIXTURES = Path.of(System.getProperty("fixtures.dir"));
+    private static final Path FIXTURES = TestFiles.fixturesDir();
 
     private static Note parseFixture(String name) throws IOException {
         String text = Files.readString(FIXTURES.resolve(name), StandardCharsets.UTF_8);
@@ -28,7 +28,7 @@ class NoteFormatTest {
 
     static Stream<String> fixtureNames() throws IOException {
         try (Stream<Path> files = Files.list(FIXTURES)) {
-            return files.map(p -> p.getFileName().toString())
+            return files.map(TestFiles::name)
                     .filter(n -> n.endsWith(".md"))
                     .sorted()
                     .toList()

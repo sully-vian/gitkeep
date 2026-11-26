@@ -20,7 +20,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class NoteStoreTest {
 
-    private static final Path FIXTURES = Path.of(System.getProperty("fixtures.dir"));
+    private static final Path FIXTURES = TestFiles.fixturesDir();
 
     @TempDir
     Path dir;
@@ -49,7 +49,7 @@ class NoteStoreTest {
     void listsEveryFixture() throws IOException {
         List<String> names;
         try (Stream<Path> files = Files.list(FIXTURES)) {
-            names = files.map(p -> p.getFileName().toString()).sorted().toList();
+            names = files.map(TestFiles::name).sorted().toList();
         }
         for (String name : names) {
             Files.copy(FIXTURES.resolve(name), dir.resolve(name));
@@ -138,7 +138,7 @@ class NoteStoreTest {
     /** Every file and folder in the notes folder, hidden ones included. */
     private List<String> allFiles() throws IOException {
         try (Stream<Path> files = Files.list(dir)) {
-            return files.map(p -> p.getFileName().toString()).sorted().toList();
+            return files.map(TestFiles::name).sorted().toList();
         }
     }
 

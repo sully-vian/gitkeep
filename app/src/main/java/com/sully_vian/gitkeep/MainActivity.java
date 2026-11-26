@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The note list, newest first. Tapping a note opens it, "New" starts one, and
@@ -38,11 +39,11 @@ public class MainActivity extends AppCompatActivity {
     private List<Note> notes = new ArrayList<>();
 
     /** Swiped away, but still on disk: "Undo" is showing. Null when there's none. */
-    private Note pendingDelete;
-    private Snackbar undoMessage;
+    private @Nullable Note pendingDelete;
+    private @Nullable Snackbar undoMessage;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -160,7 +161,9 @@ public class MainActivity extends AppCompatActivity {
         String path = pendingDelete.path();
         pendingDelete = null;
         notes.removeIf(note -> note.path().equals(path));
-        undoMessage.dismiss();
+        if (undoMessage != null) {
+            undoMessage.dismiss();
+        }
 
         NoteStore store = Notes.store(this);
         Notes.IO.execute(() -> {

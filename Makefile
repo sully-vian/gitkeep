@@ -17,7 +17,7 @@ build: ## Debug APK, no phone needed
 test: ## JVM unit tests (no phone needed)
 	$(GRADLEW) test --rerun
 
-check: ## Static analysis: list the warnings (NullAway)
+check: ## Static analysis: null errors (NullAway), for every module
 	$(GRADLEW) :core:compileJava --rerun :core:compileTestJava --rerun :app:compileDebugJavaWithJavac --rerun
 
 install: ## Build and install the debug APK on the phone

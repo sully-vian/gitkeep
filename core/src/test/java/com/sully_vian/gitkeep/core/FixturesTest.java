@@ -15,7 +15,7 @@ class FixturesTest {
 
     @Test
     void fixturesFolderContainsNotes() throws IOException {
-        Path dir = Path.of(System.getProperty("fixtures.dir"));
+        Path dir = TestFiles.fixturesDir();
         assertTrue(Files.isDirectory(dir), "missing fixtures folder: " + dir);
 
         try (Stream<Path> files = Files.list(dir)) {
