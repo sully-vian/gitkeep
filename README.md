@@ -84,3 +84,16 @@ The app uses [JGit](https://www.eclipse.org/jgit/) **5.13.x**, the last version 
 - **How this was checked:** every Java method that JGit's code in the APK calls was looked up in Android's own API table (`platforms/android-*/data/api-versions.xml`). With 5.13.5, nothing needs more than API 26. Then a real init, add, commit, status and log ran on an Android 12 phone, and the resulting repository passed `git fsck`.
 - **What 5.13.x still lacks on Android:** Java's monitoring classes and process handles, used only by JGit's garbage collector and statistics. The app turns automatic garbage collection off (`gc.auto = 0`).
 - **Moving to a newer JGit** means running the same check again, or raising `minSdk` to 33.
+
+## Git repository
+
+The notes folder is the work tree of a git repository, with `.git` inside it. The app creates it on branch `main`, with a first commit, "Set up the repository", holding two files:
+
+- `.gitattributes`: `* text=auto eol=lf`. Text files are stored with LF line endings, even when a note was edited with CRLF on another computer; binary files are left alone.
+- `.gitignore`: `/.*.tmp`, the temp files of a note being saved, which only a crash leaves behind.
+
+Each time the repository is opened, also one cloned or made by hand:
+
+- automatic garbage collection is turned off (`gc.auto = 0`), see above;
+- a missing `.gitattributes` or `.gitignore` is written back, and committed with the next commit;
+- a `.git/index.lock` is deleted. The app is the only program writing to the repository, from a single thread, so a lock found then was left by a commit killed halfway, and would make every later commit fail.
