@@ -1,5 +1,6 @@
 package com.sully_vian.gitkeep;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -113,6 +114,35 @@ public class NoteActivity extends AppCompatActivity {
         // leaving the screen (back, home, another app, rotation): save now
         handler.removeCallbacks(saveLater);
         save();
+        // closing (back): committed now, so that the commit comes before the
+        // list's reload, which is queued in its onResume, before this onStop
+        if (isFinishing()) {
+            commitWhenLeaving();
+        }
+    }
+
+    /**
+     * Left for another app, home, or the screen turned off: the edits so far are
+     * committed. Not for a rotation, which doesn't leave the note, nor when
+     * closing, already committed in {@link #onPause}.
+     */
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (!isFinishing() && !isChangingConfigurations()) {
+            commitWhenLeaving();
+        }
+    }
+
+    /**
+     * Commits on the I/O thread, after the save queued just before. Autosaves
+     * while typing don't commit: one commit per visit to the editor, not one per
+     * pause in the typing.
+     */
+    private void commitWhenLeaving() {
+        // the application, not this screen, which may be gone by then
+        Context app = getApplicationContext();
+        Notes.IO.execute(() -> Notes.commit(app));
     }
 
     @Override

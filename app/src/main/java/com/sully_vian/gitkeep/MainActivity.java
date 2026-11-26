@@ -75,6 +75,8 @@ public class MainActivity extends AppCompatActivity {
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, "fixtures not copied", e);
             }
+            // the fixtures, and anything left uncommitted (a crash, notes from before git)
+            Notes.commit(this);
         });
     }
 
@@ -169,6 +171,7 @@ public class MainActivity extends AppCompatActivity {
         Notes.IO.execute(() -> {
             try {
                 store.delete(path);
+                Notes.commit(this);
             } catch (IOException e) {
                 LOG.log(Level.SEVERE, "note not deleted: " + path, e);
                 runOnUiThread(() -> Toast.makeText(this, R.string.note_not_deleted, Toast.LENGTH_LONG).show());

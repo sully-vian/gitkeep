@@ -102,6 +102,8 @@ Each time the repository is opened, also one cloned or made by hand:
 
 A commit takes every file of the folder's root that was added, edited or deleted since the last one, notes or not. Files in subfolders are never staged, like everywhere else in the app. When nothing changed, there is no commit.
 
+The app commits when the editor is left (Back, Home, another app; not a rotation, and not on each autosave while typing), once the "Undo" of a delete is gone, and at launch, for the fixtures of a debug build or anything left uncommitted by a crash. The author is `gitkeep <gitkeep@localhost>` until it can be set in the settings.
+
 Messages name the files, never their titles or content, so the history can be shared for troubleshooting: `Edit 20261124-015725.md` for one file, and for several, a summary line and one line per file:
 
 ```

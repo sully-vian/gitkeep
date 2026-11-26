@@ -328,8 +328,7 @@ public final class GitRepo implements AutoCloseable {
                 // a signing setting from a git config must never make commits fail
                 .setSign(Boolean.FALSE)
                 .call();
-        LOG.info("committed " + commit.abbreviate(7).name() + ": "
-                + (added.size() + removed.size()) + " files");
+        LOG.info("committed " + commit.abbreviate(7).name() + ", files: " + (added.size() + removed.size()));
         return commit;
     }
 
