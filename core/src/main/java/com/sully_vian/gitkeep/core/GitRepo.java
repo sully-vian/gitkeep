@@ -6,20 +6,28 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TimeZone;
+import java.util.TreeSet;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.AddCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.RmCommand;
+import org.eclipse.jgit.api.Status;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ConfigConstants;
 import org.eclipse.jgit.lib.Constants;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.treewalk.TreeWalk;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The git repository of the notes folder: the folder is its work tree, with the
@@ -156,6 +164,153 @@ public final class GitRepo implements AutoCloseable {
     }
 
     /**
+     * Commits every file of the folder's root that was added, edited or deleted
+     * since the last commit. Files in subfolders are never staged, and ignored
+     * files (temp files) never seen.
+     *
+     * <p>
+     * The message names the files, never their content: "Edit
+     * 20261124-015725.md" for one file, or a summary line followed by one line
+     * per file.
+     *
+     * @return the new commit, or null when nothing changed
+     */
+    public @Nullable RevCommit commit() throws IOException, GitAPIException {
+        Set<String> changed = new TreeSet<>();
+        Status status = git.status().call();
+        addRootPaths(changed, status.getUntracked());
+        addRootPaths(changed, status.getAdded());
+        addRootPaths(changed, status.getModified());
+        addRootPaths(changed, status.getChanged());
+        addRootPaths(changed, status.getMissing());
+        addRootPaths(changed, status.getRemoved());
+        if (changed.isEmpty()) {
+            return null;
+        }
+
+        // what the change is, from the last commit and the folder (the index may
+        // hold the staged half of an interrupted commit)
+        List<String> added = new ArrayList<>();
+        List<String> edited = new ArrayList<>();
+        List<String> deleted = new ArrayList<>();
+        List<String> unstaged = new ArrayList<>();
+        Set<String> inHead = headPaths(changed);
+        for (String path : changed) {
+            boolean exists = Files.exists(dir.resolve(path));
+            if (inHead.contains(path)) {
+                (exists ? edited : deleted).add(path);
+            } else if (exists) {
+                added.add(path);
+            } else {
+                // staged, then deleted before any commit: nothing to say about it
+                unstaged.add(path);
+            }
+        }
+
+        List<String> toAdd = new ArrayList<>(added);
+        toAdd.addAll(edited);
+        List<String> toRemove = new ArrayList<>(deleted);
+        toRemove.addAll(unstaged);
+        if (toAdd.isEmpty() && deleted.isEmpty()) {
+            stage(toAdd, toRemove);
+            return null;
+        }
+        return commitFiles(message(added, edited, deleted), toAdd, toRemove);
+    }
+
+    /** Only the files at the root: a path with a "/" is in a subfolder. */
+    private static void addRootPaths(Set<String> into, Set<String> paths) {
+        for (String path : paths) {
+            if (path.indexOf('/') == -1) {
+                into.add(path);
+            }
+        }
+    }
+
+    /** Which of the given root paths are in the last commit. */
+    private Set<String> headPaths(Set<String> paths) throws IOException {
+        Set<String> found = new HashSet<>();
+        Repository repository = git.getRepository();
+        ObjectId head = repository.resolve(Constants.HEAD + "^{tree}");
+        if (head == null) {
+            // no commit yet
+            return found;
+        }
+        try (TreeWalk walk = new TreeWalk(repository)) {
+            walk.addTree(head);
+            // not recursive: only the root's entries
+            walk.setRecursive(false);
+            while (walk.next()) {
+                if (paths.contains(walk.getPathString())) {
+                    found.add(walk.getPathString());
+                }
+            }
+        }
+        return found;
+    }
+
+    /**
+     * "Edit 20261124-015725.md" for one file. For several, a summary line, then
+     * one line per file, added first, then edited, then deleted:
+     *
+     * <pre>
+     * Edit 2 notes, delete 1
+     *
+     * Edit 20261124-015725.md
+     * Edit 20261125-080000.md
+     * Delete 20261101-090000.md
+     * </pre>
+     *
+     * "notes" when every file is a ".md", "files" otherwise.
+     */
+    static String message(List<String> added, List<String> edited, List<String> deleted) {
+        List<String> lines = new ArrayList<>();
+        for (String path : added) {
+            lines.add("Add " + path);
+        }
+        for (String path : edited) {
+            lines.add("Edit " + path);
+        }
+        for (String path : deleted) {
+            lines.add("Delete " + path);
+        }
+        if (lines.size() == 1) {
+            return lines.get(0);
+        }
+
+        boolean allNotes = true;
+        for (List<String> group : Arrays.asList(added, edited, deleted)) {
+            for (String path : group) {
+                allNotes &= path.endsWith(".md");
+            }
+        }
+        List<String> parts = new ArrayList<>();
+        int firstCount = addPart(parts, "add", added.size(), 0);
+        firstCount = addPart(parts, "edit", edited.size(), firstCount);
+        firstCount = addPart(parts, "delete", deleted.size(), firstCount);
+        // the noun after the first count only: "Add 2 notes, edit 1"
+        String noun = (allNotes ? " note" : " file") + (firstCount == 1 ? "" : "s");
+        parts.set(0, parts.get(0) + noun);
+        String summary = String.join(", ", parts);
+        summary = Character.toUpperCase(summary.charAt(0)) + summary.substring(1);
+
+        StringBuilder message = new StringBuilder(summary).append("\n");
+        for (String line : lines) {
+            message.append('\n').append(line);
+        }
+        return message.append('\n').toString();
+    }
+
+    /** @return the count of the first part: firstCount, or count for the first one */
+    private static int addPart(List<String> parts, String verb, int count, int firstCount) {
+        if (count == 0) {
+            return firstCount;
+        }
+        parts.add(verb + " " + count);
+        return parts.size() == 1 ? count : firstCount;
+    }
+
+    /**
      * Stages the given root files and commits them, as the app's author.
      *
      * @param added   files to add or update in the index
@@ -163,6 +318,22 @@ public final class GitRepo implements AutoCloseable {
      */
     private RevCommit commitFiles(String message, List<String> added, List<String> removed)
             throws GitAPIException {
+        stage(added, removed);
+        PersonIdent ident = new PersonIdent(authorName, authorEmail,
+                Date.from(clock.instant()), TimeZone.getTimeZone(clock.getZone()));
+        RevCommit commit = git.commit()
+                .setMessage(message)
+                .setAuthor(ident)
+                .setCommitter(ident)
+                // a signing setting from a git config must never make commits fail
+                .setSign(Boolean.FALSE)
+                .call();
+        LOG.info("committed " + commit.abbreviate(7).name() + ": "
+                + (added.size() + removed.size()) + " files");
+        return commit;
+    }
+
+    private void stage(List<String> added, List<String> removed) throws GitAPIException {
         if (!added.isEmpty()) {
             AddCommand add = git.add();
             for (String path : added) {
@@ -177,18 +348,6 @@ public final class GitRepo implements AutoCloseable {
             }
             rm.call();
         }
-        PersonIdent ident = new PersonIdent(authorName, authorEmail,
-                Date.from(clock.instant()), TimeZone.getTimeZone(clock.getZone()));
-        RevCommit commit = git.commit()
-                .setMessage(message)
-                .setAuthor(ident)
-                .setCommitter(ident)
-                // a signing setting from a git config must never make commits fail
-                .setSign(Boolean.FALSE)
-                .call();
-        LOG.info("committed " + commit.abbreviate(7).name() + ": "
-                + (added.size() + removed.size()) + " files");
-        return commit;
     }
 
     /** The JGit repository, for the tests and for reading the history. */

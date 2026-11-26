@@ -97,3 +97,17 @@ Each time the repository is opened, also one cloned or made by hand:
 - automatic garbage collection is turned off (`gc.auto = 0`), see above;
 - a missing `.gitattributes` or `.gitignore` is written back, and committed with the next commit;
 - a `.git/index.lock` is deleted. The app is the only program writing to the repository, from a single thread, so a lock found then was left by a commit killed halfway, and would make every later commit fail.
+
+### Commits
+
+A commit takes every file of the folder's root that was added, edited or deleted since the last one, notes or not. Files in subfolders are never staged, like everywhere else in the app. When nothing changed, there is no commit.
+
+Messages name the files, never their titles or content, so the history can be shared for troubleshooting: `Edit 20261124-015725.md` for one file, and for several, a summary line and one line per file:
+
+```
+Edit 2 notes, delete 1
+
+Edit 20261124-015725.md
+Edit 20261125-080000.md
+Delete 20261101-090000.md
+```
