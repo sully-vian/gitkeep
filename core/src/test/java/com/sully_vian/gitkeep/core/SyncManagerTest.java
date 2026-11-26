@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
@@ -27,6 +28,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.ObjectIdRef;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryState;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.transport.RefSpec;
 import org.junit.jupiter.api.AfterAll;
@@ -378,6 +380,111 @@ class SyncManagerTest {
         refs.add(new ObjectIdRef.PeeledNonTag(Ref.Storage.NETWORK, "refs/heads/notes", two));
         assertEquals("notes", SyncManager.defaultBranch(refs));
         assertEquals(null, SyncManager.defaultBranch(new ArrayList<>()));
+    }
+
+    // --- conflicts
+
+    /** a and b synced, both with a.md. */
+    private GitRepo[] syncedPhones() throws Exception {
+        GitRepo a = phone("a");
+        GitRepo b = phone("b");
+        write(a, "a.md", "a\n");
+        write(b, "b.md", "b\n");
+        assertOk(sync(a));
+        assertOk(sync(b));
+        assertOk(sync(a));
+        return new GitRepo[] {a, b};
+    }
+
+    private static void assertConflict(SyncManager.Result result, String... paths) {
+        assertEquals(SyncManager.Outcome.CONFLICT, result.outcome());
+        assertEquals(Arrays.asList(paths), result.conflicts());
+        assertFalse(result.changed());
+    }
+
+    @Test
+    void conflictIsUndone() throws Exception {
+        GitRepo[] phones = syncedPhones();
+        GitRepo a = phones[0];
+        GitRepo b = phones[1];
+        write(a, "a.md", "from a\n");
+        write(b, "a.md", "from b\n");
+        assertOk(sync(a));
+        ObjectId remoteBefore = remoteHead();
+
+        SyncManager.Result result = sync(b);
+        assertConflict(result, "a.md");
+        // b as before the sync: its edit committed, nothing merged, nothing pushed
+        assertEquals("from b\n", read(b, "a.md"));
+        assertEquals("Edit a.md", lastCommit(b).getFullMessage());
+        assertEquals(RepositoryState.SAFE, b.repository().getRepositoryState());
+        assertTrue(Git.wrap(b.repository()).status().call().isClean());
+        assertEquals(remoteBefore, remoteHead());
+
+        // still usable: the same conflict again, then fine once b gives up its edit
+        assertConflict(sync(b), "a.md");
+        write(b, "a.md", "from a\n");
+        assertOk(sync(b));
+        assertEquals(head(b), remoteHead());
+    }
+
+    @Test
+    void editAgainstDeleteIsAConflict() throws Exception {
+        GitRepo[] phones = syncedPhones();
+        GitRepo a = phones[0];
+        GitRepo b = phones[1];
+        Files.delete(dir(a).resolve("a.md"));
+        write(b, "a.md", "kept\n");
+        assertOk(sync(a));
+        assertConflict(sync(b), "a.md");
+        assertEquals("kept\n", read(b, "a.md"));
+        assertEquals(RepositoryState.SAFE, b.repository().getRepositoryState());
+    }
+
+    @Test
+    void noteSavedDuringFetchSurvivesConflict() throws Exception {
+        GitRepo[] phones = syncedPhones();
+        GitRepo a = phones[0];
+        GitRepo b = phones[1];
+        write(a, "a.md", "from a\n");
+        write(b, "a.md", "from b\n");
+        assertOk(sync(a));
+
+        // a note saved on b while it fetches
+        Executor network = task -> {
+            try {
+                write(b, "b.md", "saved meanwhile\n");
+            } catch (IOException e) {
+                throw new AssertionError(e);
+            }
+            task.run();
+        };
+        assertConflict(new SyncManager(b, NOW, network).sync(remote).join(), "a.md");
+        assertEquals("saved meanwhile\n", read(b, "b.md"));
+        assertTrue(Git.wrap(b.repository()).status().call().isClean());
+    }
+
+    @Test
+    void unfinishedMergeIsUndoneAtOpen() throws Exception {
+        GitRepo[] phones = syncedPhones();
+        GitRepo a = phones[0];
+        GitRepo b = phones[1];
+        write(a, "a.md", "from a\n");
+        write(b, "a.md", "from b\n");
+        assertOk(sync(a));
+        b.commit();
+        // a sync killed in the middle of its merge
+        Git git = Git.wrap(b.repository());
+        git.fetch().setRemote("origin").call();
+        git.merge().include(b.repository().exactRef("refs/remotes/origin/main")).call();
+        assertEquals(RepositoryState.MERGING, b.repository().getRepositoryState());
+        b.close();
+
+        try (GitRepo reopened = GitRepo.open(dir(b), TestGit.NAME, TestGit.EMAIL, clock)) {
+            assertEquals(RepositoryState.SAFE, reopened.repository().getRepositoryState());
+            assertEquals("from b\n", read(reopened, "a.md"));
+            assertTrue(Git.wrap(reopened.repository()).status().call().isClean());
+        }
     }
 
     // --- errors

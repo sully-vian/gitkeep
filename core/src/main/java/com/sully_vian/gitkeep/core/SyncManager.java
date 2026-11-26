@@ -254,6 +254,9 @@ public final class SyncManager {
     private Merged merge(boolean firstConnect, @Nullable String remoteDefault) {
         try {
             Repository repository = repository();
+            // a note saved while fetching: committed, so that the merge, or its
+            // undoing after a conflict, never touches an uncommitted file
+            repo.commit();
             ObjectId before = repository.resolve(Constants.HEAD);
             if (firstConnect) {
                 connect(repository, remoteDefault);
@@ -281,7 +284,14 @@ public final class SyncManager {
                     LOG.info("merged");
                 } else if (status == MergeResult.MergeStatus.FAST_FORWARD) {
                     LOG.info("fast-forwarded");
+                } else if (status == MergeResult.MergeStatus.CONFLICTING) {
+                    List<String> conflicts = new ArrayList<>(Git.wrap(repository).status().call().getConflicting());
+                    Collections.sort(conflicts);
+                    undoMerge(repository);
+                    LOG.warning("conflict in " + conflicts + ": merge undone");
+                    throw new SyncFailure(new Result(Outcome.CONFLICT, false, conflicts, ""));
                 } else if (status != MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
+                    undoMerge(repository);
                     throw new SyncFailure(Result.of(Outcome.ERROR, "merge " + status.toString().toLowerCase(Locale.ROOT)));
                 }
             }
@@ -361,6 +371,14 @@ public final class SyncManager {
         } else {
             LOG.info("first sync, files on both sides: merging");
         }
+    }
+
+    /**
+     * Back to the last commit, as before the merge: everything was committed just
+     * before it, so nothing of the phone's is lost.
+     */
+    static void undoMerge(Repository repository) throws GitAPIException {
+        Git.wrap(repository).reset().setMode(ResetCommand.ResetType.HARD).setRef(Constants.HEAD).call();
     }
 
     /** Whether the last commit holds nothing but the setup commit's files. */

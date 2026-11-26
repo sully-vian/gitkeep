@@ -27,6 +27,7 @@ import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
+import org.eclipse.jgit.lib.RepositoryState;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.treewalk.TreeWalk;
@@ -93,8 +94,9 @@ public final class GitRepo implements AutoCloseable {
      * Every time, also for a repository made elsewhere: automatic garbage
      * collection is turned off (it needs Java classes Android doesn't have),
      * missing {@value #ATTRIBUTES} or {@value #IGNORE} files are written back
-     * (committed with the next commit), and a lock left by a commit that was
-     * killed halfway is removed.
+     * (committed with the next commit), a lock left by a commit that was killed
+     * halfway is removed, and so is a merge left unfinished by a sync that was
+     * killed halfway.
      *
      * @param authorName  author and committer of the app's commits
      * @param authorEmail their email
@@ -121,6 +123,7 @@ public final class GitRepo implements AutoCloseable {
         GitRepo repo = new GitRepo(dir, git, authorName, authorEmail, clock);
         try {
             repo.removeStaleLock(gitDir);
+            repo.undoUnfinishedMerge();
             repo.turnOffGc();
             List<String> written = repo.writeMissingSetupFiles();
             if (created) {
@@ -141,6 +144,19 @@ public final class GitRepo implements AutoCloseable {
     private void removeStaleLock(Path gitDir) throws IOException {
         if (Files.deleteIfExists(gitDir.resolve("index.lock"))) {
             LOG.warning("removed a stale index.lock");
+        }
+    }
+
+    /**
+     * A merge is only ever left unfinished by a sync killed halfway (the app
+     * undoes a merge with conflicts at once): back to the last commit, which
+     * holds everything the phone had before the merge.
+     */
+    private void undoUnfinishedMerge() throws GitAPIException {
+        RepositoryState state = git.getRepository().getRepositoryState();
+        if (state == RepositoryState.MERGING || state == RepositoryState.MERGING_RESOLVED) {
+            SyncManager.undoMerge(git.getRepository());
+            LOG.warning("undid a merge left unfinished");
         }
     }
 

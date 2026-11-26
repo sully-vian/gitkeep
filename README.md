@@ -129,6 +129,12 @@ Fetching and pushing run on a thread of their own, committing and merging on the
 
 A sync ends with one of: done, offline (the host can't be reached), credentials refused, conflict, or another error with a short explanation. Credentials written in the URL (`https://user:token@…`) are refused: they would be saved in the repository's config in clear. The token is never logged; the sync's own log lines name the host only.
 
+### Conflicts (until conflict notes exist)
+
+When both sides changed the same file (the same note edited on two devices, or edited on one and deleted on the other), the merge is undone at once: the repository goes back to its last commit, which holds everything the phone had, nothing is pushed, and the sync ends with "conflict" and the names of the files. The phone keeps working as before, and every sync stops on the same conflict until one side gives up its change. A merge left unfinished by a sync killed halfway is undone the same way when the repository is opened.
+
+Everything pending is committed right before the merge, in the same task, so that undoing it never loses a note saved while the sync was fetching.
+
 ### First sync with a remote
 
 The first sync with a remote (or with a new URL: what was known of the old remote is forgotten) connects the two sides:
