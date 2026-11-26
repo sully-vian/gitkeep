@@ -95,7 +95,7 @@ The notes folder becomes a git repository. One step per commit; steps 2 and 3 ar
 2. [x] `GitRepo`: opens the repository of the notes folder, or creates it, with a `.gitattributes` forcing LF line endings.
 3. [x] Commit: `GitRepo.commit(…)` stages the notes that changed or were deleted, and does nothing when nothing changed. Messages name the files (`Edit 20261124-015725.md`), not the titles.
 4. [x] The app commits: repository set up at launch; a commit when leaving the editor, after a delete (once "Undo" is gone), and after the fixtures are copied. Not after each autosave. Author: a default (`gitkeep`) until the settings of Phase 5.
-5. [ ] Dates from git, never stored in the file: last edit of each note, and first appearance for notes whose name isn't a creation time. One walk over the history, cached and updated after each commit.
+5. [x] Dates from git, never stored in the file: last edit of each note, and first appearance for notes whose name isn't a creation time. One walk over the history, cached and updated after each commit.
 6. [ ] `make notes`: pulls the repository off the phone and runs `git log` and `git fsck` on it.
 7. [ ] Optional: hidden "history" screen showing the log of a note.
 

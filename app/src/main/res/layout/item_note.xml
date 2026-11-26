@@ -1,12 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One row of the note list: the note's title -->
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:id="@+id/title"
+<!-- One row of the note list: the note's title, and when it was last edited -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?attr/selectableItemBackground"
-    android:ellipsize="end"
-    android:maxLines="1"
+    android:orientation="vertical"
     android:paddingHorizontal="16dp"
-    android:paddingVertical="16dp"
-    android:textAppearance="?attr/textAppearanceBodyLarge" />
+    android:paddingVertical="12dp">
+
+    <TextView
+        android:id="@+id/title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceBodyLarge" />
+
+    <!-- gone for a note never committed -->
+    <TextView
+        android:id="@+id/edited"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?android:attr/textColorSecondary"
+        android:visibility="gone" />
+</LinearLayout>

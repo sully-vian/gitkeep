@@ -39,6 +39,37 @@ final class TestGit {
         return Clock.fixed(at, ZONE);
     }
 
+    /** A clock that only moves when told to. */
+    static final class StepClock extends Clock {
+
+        private Instant now;
+
+        StepClock(Instant start) {
+            now = start;
+        }
+
+        /** Moves the clock forward, and returns the new time. */
+        Instant advance(long seconds) {
+            now = now.plusSeconds(seconds);
+            return now;
+        }
+
+        @Override
+        public ZoneId getZone() {
+            return ZONE;
+        }
+
+        @Override
+        public Clock withZone(ZoneId zone) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public Instant instant() {
+            return now;
+        }
+    }
+
     /** The machine's reader, but with empty user, system and JGit configs. */
     private static final class NoConfigs extends SystemReader {
 

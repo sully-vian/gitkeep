@@ -11,10 +11,14 @@ import com.google.android.material.snackbar.Snackbar;
 import com.sully_vian.gitkeep.core.Note;
 import com.sully_vian.gitkeep.core.NoteStore;
 import java.io.IOException;
+import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.eclipse.jgit.api.errors.GitAPIException;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -37,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
 
     /** The notes as last read, sorted. Only used on the main thread. */
     private List<Note> notes = new ArrayList<>();
+
+    /** When each note was last committed, by path, as last read. Only used on the main thread. */
+    private Map<String, Instant> lastEdits = new HashMap<>();
 
     /** Swiped away, but still on disk: "Undo" is showing. Null when there's none. */
     private @Nullable Note pendingDelete;
@@ -106,8 +113,10 @@ public class MainActivity extends AppCompatActivity {
         try {
             List<Note> loaded = store.list();
             loaded.sort(Note.NEWEST_FIRST);
+            Map<String, Instant> edits = lastEdits();
             runOnUiThread(() -> {
                 notes = loaded;
+                lastEdits = edits;
                 showNotes();
             });
         } catch (IOException e) {
@@ -116,12 +125,27 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    /**
+     * When each note was last edited, from git. Without the repository, the list
+     * still shows, without dates. Runs on the I/O thread.
+     */
+    private Map<String, Instant> lastEdits() {
+        try {
+            return Notes.git(this).lastEdits();
+        } catch (IOException | GitAPIException | RuntimeException e) {
+            LOG.log(Level.SEVERE, "dates not read", e);
+            return new HashMap<>();
+        }
+    }
+
     /** Shows every note except the one waiting to be deleted. */
     private void showNotes() {
-        List<Note> shown = new ArrayList<>(notes);
-        if (pendingDelete != null) {
-            String hidden = pendingDelete.path();
-            shown.removeIf(note -> note.path().equals(hidden));
+        String hidden = pendingDelete == null ? null : pendingDelete.path();
+        List<NoteRow> shown = new ArrayList<>();
+        for (Note note : notes) {
+            if (!note.path().equals(hidden)) {
+                shown.add(new NoteRow(note, lastEdits.get(note.path())));
+            }
         }
         adapter.submitList(shown);
     }

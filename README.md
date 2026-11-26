@@ -42,6 +42,8 @@ Dates. The header holds what only the note can say: its title and tags.
 - **Creation time.** A note made by the app is named after it. For other notes, git knows when the file first appeared (`git log --diff-filter=A --format=%aI -- <file>`). A `created:` line already in a file is kept as an unknown key, but the app doesn't read it.
 - **Modification time.** Git already records it (`git log -1 --format=%cI -- <file>`). A `modified:` line rewritten on every save would make every note edited on two devices conflict on that line, even when the edits themselves are in different paragraphs that git could merge on its own.
 
+The app reads these dates from the history: the whole history once, then only the new commits. The list shows when each note was last edited, as of its last commit; a note never committed yet shows no date.
+
 ### Writing rules
 
 So that saving a note without changes produces an identical file, and no git diff:

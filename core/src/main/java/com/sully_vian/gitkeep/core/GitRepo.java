@@ -5,11 +5,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeSet;
@@ -68,6 +71,7 @@ public final class GitRepo implements AutoCloseable {
     private final String authorName;
     private final String authorEmail;
     private final Clock clock;
+    private final GitDates dates = new GitDates();
 
     private GitRepo(Path dir, Git git, String authorName, String authorEmail, Clock clock) {
         this.dir = dir;
@@ -347,6 +351,27 @@ public final class GitRepo implements AutoCloseable {
             }
             rm.call();
         }
+    }
+
+    /**
+     * When each file at the root was last edited, from the history, by file name
+     * (e.g. "20261117-143052.md"). Files never committed aren't in it. The
+     * history is read once, then only the commits made since the last call.
+     *
+     * @return a copy, safe to hand to another thread
+     */
+    public Map<String, Instant> lastEdits() throws IOException {
+        Map<String, Instant> edits = new HashMap<>();
+        for (Map.Entry<String, GitDates.FileDates> entry : dates().entrySet()) {
+            edits.put(entry.getKey(), entry.getValue().lastEdit());
+        }
+        return edits;
+    }
+
+    /** Every date known for the root's files: when added and last edited. */
+    Map<String, GitDates.FileDates> dates() throws IOException {
+        dates.update(git.getRepository());
+        return dates.all();
     }
 
     /** The JGit repository, for the tests and for reading the history. */
