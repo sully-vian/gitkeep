@@ -129,6 +129,12 @@ Fetching and pushing run on a thread of their own, committing and merging on the
 
 A sync ends with one of: done, offline (the host can't be reached), credentials refused, conflict, or another error with a short explanation. Credentials written in the URL (`https://user:token@…`) are refused: they would be saved in the repository's config in clear. The token is never logged; the sync's own log lines name the host only.
 
+### Settings and the token
+
+The settings screen (list menu → Settings) holds the repository's HTTPS URL, the username, the personal access token, and the author of the commits. The author applies to the next commit; left empty, it is `gitkeep <gitkeep@localhost>`.
+
+Everything but the token is saved in clear in the app's preferences: none of it is secret. The token is encrypted (AES-256-GCM) with a key of the Android Keystore, which never leaves it and only this app can use, and only the encrypted token and its IV are saved, in a separate file. A token that can't be decrypted, e.g. after the app's files were restored on another phone without the key, counts as not set and has to be typed again. The settings screen only says whether a token is set.
+
 ### Conflicts (until conflict notes exist)
 
 When both sides changed the same file (the same note edited on two devices, or edited on one and deleted on the other), the merge is undone at once: the repository goes back to its last commit, which holds everything the phone had, nothing is pushed, and the sync ends with "conflict" and the names of the files. The phone keeps working as before, and every sync stops on the same conflict until one side gives up its change. A merge left unfinished by a sync killed halfway is undone the same way when the repository is opened.

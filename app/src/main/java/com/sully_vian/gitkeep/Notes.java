@@ -18,10 +18,6 @@ final class Notes {
 
     private static final Logger LOG = Logger.getLogger(Notes.class.getName());
 
-    /** The author of the app's commits, until it can be set in the settings. */
-    private static final String AUTHOR_NAME = "gitkeep";
-    private static final String AUTHOR_EMAIL = "gitkeep@localhost";
-
     /**
      * Every file read or write of the app, git included, off the main thread. A
      * single thread for the whole app: tasks run one at a time, in the order they
@@ -52,7 +48,8 @@ final class Notes {
     static GitRepo git(Context context) throws IOException, GitAPIException {
         GitRepo repo = git;
         if (repo == null) {
-            repo = GitRepo.open(dir(context), AUTHOR_NAME, AUTHOR_EMAIL, Clock.systemDefaultZone());
+            repo = GitRepo.open(dir(context), Settings.authorName(context), Settings.authorEmail(context),
+                    Clock.systemDefaultZone());
             git = repo;
         }
         return repo;

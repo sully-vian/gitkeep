@@ -11,4 +11,16 @@
     <string name="note_deleted">Note deleted</string>
     <string name="undo">Undo</string>
     <string name="note_not_deleted">Couldn\'t delete this note</string>
+    <string name="settings">Settings</string>
+    <string name="settings_remote">Remote repository</string>
+    <string name="settings_url">Repository URL</string>
+    <string name="settings_url_hint">HTTPS address, e.g. https://github.com/me/notes.git</string>
+    <string name="settings_username">Username</string>
+    <string name="settings_token">Access token</string>
+    <string name="settings_token_hint">A personal access token that can read and write the repository. Saved encrypted on this phone.</string>
+    <string name="token_set">Set</string>
+    <string name="token_not_set">Not set</string>
+    <string name="settings_author">Author of the commits</string>
+    <string name="settings_author_name">Name</string>
+    <string name="settings_author_email">Email</string>
 </resources>

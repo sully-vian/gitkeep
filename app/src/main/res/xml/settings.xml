@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The settings screen. The token is saved by TokenStore, encrypted, not with the others -->
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory app:title="@string/settings_remote">
+
+        <EditTextPreference
+            app:key="remote_url"
+            app:title="@string/settings_url"
+            app:useSimpleSummaryProvider="true"
+            app:dialogMessage="@string/settings_url_hint" />
+
+        <EditTextPreference
+            app:key="remote_username"
+            app:title="@string/settings_username"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="remote_token"
+            app:title="@string/settings_token"
+            app:dialogMessage="@string/settings_token_hint" />
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="@string/settings_author">
+
+        <EditTextPreference
+            app:key="author_name"
+            app:title="@string/settings_author_name"
+            app:useSimpleSummaryProvider="true" />
+
+        <EditTextPreference
+            app:key="author_email"
+            app:title="@string/settings_author_email"
+            app:useSimpleSummaryProvider="true" />
+    </PreferenceCategory>
+</PreferenceScreen>
