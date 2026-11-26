@@ -74,7 +74,9 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 
 **Done when:** notes can be created, edited and deleted on the phone, and are still there after force-closing the app.
 
-## Phase 3 — Markdown preview
+## Phase 3 — Markdown preview (after the alpha)
+
+Postponed: not needed for a first usable version. Phases 4 to 6 come first.
 
 - [ ] Add Markwon; check that it builds and runs with the current SDK, otherwise switch to the commonmark-java fallback
 - [ ] Edit / Preview toggle in the editor
@@ -87,15 +89,17 @@ Notes live in `getFilesDir()/notes`, a flat folder of `.md` files. One step per 
 
 ## Phase 4 — Local git
 
-- [ ] Add JGit to `app/build.gradle`; check the JGit version against the Android SDK level (newer JGit versions need recent Java APIs, which may require core library desugaring)
-- [ ] `GitRepo`: initialize a repo in the notes folder on first launch, with a `.gitattributes` forcing LF line endings
-- [ ] Commit on save, debounced: after a few seconds without typing, or when leaving the editor
-- [ ] Author name and email from settings, with a default until Phase 5
-- [ ] Dates from git, never stored in the file: last edit of each file, and first appearance for notes whose name isn't a creation time. Cached, so that listing notes doesn't walk the whole history every time
-- [ ] JVM tests for `GitRepo` against a temporary folder
-- [ ] Optional: hidden "history" screen showing the log of a note
+The notes folder becomes a git repository. One step per commit; steps 2 and 3 are pure Java in `core`, with JVM tests against a temporary folder.
 
-**Done when:** pulling the notes folder off the device (`adb`) gives a valid git history.
+1. [ ] Choose the JGit version (spike): add JGit 7.x to `core`, then check the code that ends up in the APK against Android's API levels (`minSdk` 26): Java methods that the build tools don't rewrite would crash on older phones. Fix what's needed (`coreLibraryDesugaring`, `gc.auto = 0`), and run a real init and commit on the phone. Fall back to JGit 5.13.x (Java 8) if 7.x can't be made safe. Write the decision in the README.
+2. [ ] `GitRepo`: opens the repository of the notes folder, or creates it, with a `.gitattributes` forcing LF line endings.
+3. [ ] Commit: `GitRepo.commit(…)` stages the notes that changed or were deleted, and does nothing when nothing changed. Messages name the files (`Edit 20261124-015725.md`), not the titles.
+4. [ ] The app commits: repository set up at launch; a commit when leaving the editor, after a delete (once "Undo" is gone), and after the fixtures are copied. Not after each autosave. Author: a default (`gitkeep`) until the settings of Phase 5.
+5. [ ] Dates from git, never stored in the file: last edit of each note, and first appearance for notes whose name isn't a creation time. One walk over the history, cached and updated after each commit.
+6. [ ] `make notes`: pulls the repository off the phone and runs `git log` and `git fsck` on it.
+7. [ ] Optional: hidden "history" screen showing the log of a note.
+
+**Done when:** pulling the notes folder off the device (`make notes`) gives a valid git history.
 
 ## Phase 5 — Remote sync (HTTPS + token, manual)
 
