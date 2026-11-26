@@ -4,7 +4,7 @@ APP_ID = com.sully_vian.gitkeep
 CYAN = $(shell tput setaf 6 2>/dev/null)
 RESET = $(shell tput sgr0 2>/dev/null)
 
-.PHONY: help build test check install run logs logfile clean
+.PHONY: help build test check install run logs logfile notes clean
 
 .DEFAULT_GOAL := help
 
@@ -31,6 +31,13 @@ logs: ## Logs from the running app
 
 logfile: ## The app's log file, oldest first (debug builds only)
 	adb shell run-as $(APP_ID) sh -c "'cd files/logs && for f in gitkeep.1.log gitkeep.0.log; do if [ -f \$$f ]; then cat \$$f; fi; done'"
+
+notes: ## Copy the notes repository off the phone, show its log and check it (debug builds only)
+	rm -rf build/phone-notes && mkdir -p build/phone-notes
+	adb exec-out run-as $(APP_ID) tar -c -C files notes | tar -x -C build/phone-notes
+	git -C build/phone-notes/notes log --stat
+	git -C build/phone-notes/notes fsck --strict
+	@echo "Copied to build/phone-notes/notes"
 
 clean: ## Delete build outputs
 	$(GRADLEW) clean
