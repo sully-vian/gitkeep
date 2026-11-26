@@ -6,12 +6,15 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
@@ -21,8 +24,11 @@ import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.lib.ObjectId;
+import org.eclipse.jgit.lib.ObjectIdRef;
+import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.transport.RefSpec;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -285,6 +291,93 @@ class SyncManagerTest {
         assertTrue(result.changed());
         assertEquals("b2\n", read(a, "b.md"));
         assertEquals(head(a), remoteHead());
+    }
+
+    // --- first connect
+
+    /** A remote made on a computer, with plain git: one note, on the given branch, no setup files. */
+    private SyncManager.Remote computerRemote(String name, String branch) throws Exception {
+        Path bare = tmp.resolve(name + ".git");
+        Git.init().setBare(true).setDirectory(bare.toFile()).setInitialBranch(branch).call().close();
+        Path work = tmp.resolve(name + "-computer");
+        try (Git git = Git.init().setDirectory(work.toFile()).setInitialBranch(branch).call()) {
+            Files.write(work.resolve("c.md"), "c\n".getBytes(StandardCharsets.UTF_8));
+            git.add().addFilepattern("c.md").call();
+            git.commit().setMessage("Add c.md").setSign(false).setAuthor("Computer", "c@localhost")
+                    .setCommitter("Computer", "c@localhost").call();
+            git.push().setRemote(bare.toUri().toString())
+                    .setRefSpecs(new RefSpec("refs/heads/" + branch + ":refs/heads/" + branch))
+                    .call();
+        }
+        return new SyncManager.Remote(bare.toUri().toString(), "user", "token");
+    }
+
+    private static ObjectId remoteBranch(SyncManager.Remote remote, String branch) throws Exception {
+        try (Repository bare = Git.open(new File(new URI(remote.url()))).getRepository()) {
+            ObjectId id = bare.resolve("refs/heads/" + branch);
+            assertNotNull(id, "no " + branch + " on the remote");
+            return id;
+        }
+    }
+
+    @Test
+    void freshPhoneTakesTheRemoteAndItsBranch() throws Exception {
+        SyncManager.Remote computer = computerRemote("computer", "master");
+        GitRepo a = phone("a");
+        SyncManager.Result result = sync(a, computer);
+        assertOk(result);
+        assertTrue(result.changed());
+        assertEquals("master", a.repository().getBranch());
+        assertEquals("c\n", read(a, "c.md"));
+        // no merge of two histories: the remote's commit, then the setup files on top
+        RevCommit last = lastCommit(a);
+        assertEquals(1, last.getParentCount());
+        assertEquals("Add 2 files\n\nAdd .gitattributes\nAdd .gitignore\n", last.getFullMessage());
+        assertEquals("Add c.md", last.getParent(0).getShortMessage());
+        assertEquals(head(a), remoteBranch(computer, "master"));
+        assertEquals("origin", a.repository().getConfig().getString("branch", "master", "remote"));
+    }
+
+    @Test
+    void phoneWithNotesMergesWithTheRemote() throws Exception {
+        SyncManager.Remote computer = computerRemote("computer", "master");
+        GitRepo a = phone("a");
+        write(a, "a.md", "a\n");
+        assertOk(sync(a, computer));
+        assertEquals("master", a.repository().getBranch());
+        assertEquals("c\n", read(a, "c.md"));
+        assertEquals("a\n", read(a, "a.md"));
+        assertEquals(2, lastCommit(a).getParentCount());
+        assertEquals(head(a), remoteBranch(computer, "master"));
+    }
+
+    @Test
+    void newUrlIsAnotherRemote() throws Exception {
+        GitRepo a = phone("a");
+        write(a, "a.md", "a\n");
+        assertOk(sync(a));
+
+        SyncManager.Remote computer = computerRemote("computer", "trunk");
+        assertOk(sync(a, computer));
+        assertEquals("trunk", a.repository().getBranch());
+        assertEquals("c\n", read(a, "c.md"));
+        assertEquals(head(a), remoteBranch(computer, "trunk"));
+        // nothing left of the first remote
+        assertEquals(Collections.singletonList("refs/remotes/origin/trunk"),
+                a.repository().getRefDatabase().getRefsByPrefix("refs/remotes/").stream().map(Ref::getName).toList());
+        assertEquals(Collections.singleton("trunk"), a.repository().getConfig().getSubsections("branch"));
+    }
+
+    @Test
+    void defaultBranchWithoutSymref() {
+        ObjectId one = ObjectId.fromString("1111111111111111111111111111111111111111");
+        ObjectId two = ObjectId.fromString("2222222222222222222222222222222222222222");
+        List<Ref> refs = new ArrayList<>();
+        refs.add(new ObjectIdRef.PeeledNonTag(Ref.Storage.NETWORK, "HEAD", two));
+        refs.add(new ObjectIdRef.PeeledNonTag(Ref.Storage.NETWORK, "refs/heads/main", one));
+        refs.add(new ObjectIdRef.PeeledNonTag(Ref.Storage.NETWORK, "refs/heads/notes", two));
+        assertEquals("notes", SyncManager.defaultBranch(refs));
+        assertEquals(null, SyncManager.defaultBranch(new ArrayList<>()));
     }
 
     // --- errors

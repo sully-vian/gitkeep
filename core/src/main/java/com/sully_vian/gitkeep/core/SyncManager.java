@@ -8,6 +8,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -20,18 +21,22 @@ import java.util.logging.Logger;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.MergeCommand;
 import org.eclipse.jgit.api.MergeResult;
+import org.eclipse.jgit.api.ResetCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Ref;
+import org.eclipse.jgit.lib.RefUpdate;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.CredentialsProvider;
+import org.eclipse.jgit.transport.FetchResult;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
 import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider;
+import org.eclipse.jgit.treewalk.TreeWalk;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -55,6 +60,7 @@ public final class SyncManager {
 
     static final String REMOTE = Constants.DEFAULT_REMOTE_NAME;
     static final String MERGE_MESSAGE = "Merge remote changes";
+    private static final String TRACKING_PREFIX = Constants.R_REMOTES + REMOTE + "/";
 
     /** Seconds before a fetch or a push without an answer gives up. */
     private static final int TIMEOUT_S = 30;
@@ -116,6 +122,10 @@ public final class SyncManager {
         }
     }
 
+    /** What the fetch step leaves for the merge step: the remote's default branch, null when it has none. */
+    private record Fetched(@Nullable String defaultBranch) {
+    }
+
     /** What the merge step leaves for the push step. */
     private record Merged(String branch, boolean changed, boolean ahead) {
     }
@@ -150,7 +160,7 @@ public final class SyncManager {
         CredentialsProvider credentials = new UsernamePasswordCredentialsProvider(remote.username(), remote.token());
         CompletableFuture
                 .supplyAsync(() -> prepare(remote.url()), io)
-                .thenComposeAsync(nothing -> fetchMergePush(credentials, false), network)
+                .thenComposeAsync(firstConnect -> fetchMergePush(credentials, firstConnect, false), network)
                 .handle((result, error) -> error != null ? failure(error) : Objects.requireNonNull(result))
                 .thenAccept(result -> {
                     done(result);
@@ -165,22 +175,28 @@ public final class SyncManager {
     }
 
     /**
-     * Runs on io: commits what's pending, and points the remote at the URL.
+     * Runs on io: commits what's pending, and points the remote at the URL. A new
+     * URL is another remote: what was known of the old one is forgotten.
+     *
+     * @return whether this is the first sync with this remote
      */
-    private Void prepare(String url) {
+    private Boolean prepare(String url) {
         try {
             if (hasUserInfo(url)) {
                 throw new SyncFailure(Result.of(Outcome.ERROR,
                         "put the username and token in their own fields, not in the URL"));
             }
             repo.commit();
-            StoredConfig config = repository().getConfig();
+            Repository repository = repository();
+            StoredConfig config = repository.getConfig();
             if (!url.equals(config.getString("remote", REMOTE, "url"))) {
+                forgetRemote(repository);
                 config.setString("remote", REMOTE, "url", url);
                 config.setString("remote", REMOTE, "fetch", "+refs/heads/*:refs/remotes/" + REMOTE + "/*");
                 config.save();
+                LOG.info("remote set to " + host(url));
             }
-            return null;
+            return repository.getRefDatabase().getRefsByPrefix(TRACKING_PREFIX).isEmpty();
         } catch (IOException | GitAPIException e) {
             throw new CompletionException(e);
         }
@@ -190,9 +206,10 @@ public final class SyncManager {
      * Network, then io, then network: fetch, merge, push. A push refused
      * because the remote moved since the fetch is tried once more.
      */
-    private CompletableFuture<Result> fetchMergePush(CredentialsProvider credentials, boolean retry) {
-        return CompletableFuture.runAsync(() -> fetch(credentials), network)
-                .thenApplyAsync(nothing -> merge(), io)
+    private CompletableFuture<Result> fetchMergePush(CredentialsProvider credentials, boolean firstConnect,
+            boolean retry) {
+        return CompletableFuture.supplyAsync(() -> fetch(credentials), network)
+                .thenApplyAsync(fetched -> merge(firstConnect, fetched.defaultBranch()), io)
                 .thenComposeAsync(merged -> {
                     if (!merged.ahead()) {
                         return CompletableFuture.completedFuture(Result.ok(merged.changed()));
@@ -205,22 +222,23 @@ public final class SyncManager {
                     }
                     LOG.info("push refused, the remote moved: once more");
                     // the first merge's changes count too
-                    return fetchMergePush(credentials, true).thenApply(again -> merged.changed() && !again.changed()
+                    return fetchMergePush(credentials, false, true).thenApply(again -> merged.changed() && !again.changed()
                             ? new Result(again.outcome(), true, again.conflicts(), again.detail())
                             : again);
                 }, network);
     }
 
     /** Runs on network. */
-    private void fetch(CredentialsProvider credentials) {
+    private Fetched fetch(CredentialsProvider credentials) {
         try {
-            Git.wrap(repository()).fetch()
+            FetchResult result = Git.wrap(repository()).fetch()
                     .setRemote(REMOTE)
                     .setCredentialsProvider(credentials)
                     .setRemoveDeletedRefs(true)
                     .setTimeout(TIMEOUT_S)
                     .call();
             LOG.info("fetched");
+            return new Fetched(defaultBranch(result.getAdvertisedRefs()));
         } catch (GitAPIException e) {
             throw new CompletionException(e);
         }
@@ -229,13 +247,18 @@ public final class SyncManager {
     /**
      * Runs on io: brings the remote branch into the local one, as a fast-forward
      * when the local one has nothing new, else as a merge commit by the app's
-     * author.
+     * author. On the first sync with a remote, connects to it first.
+     *
+     * @param remoteDefault the remote's default branch; null when it has none
      */
-    private Merged merge() {
+    private Merged merge(boolean firstConnect, @Nullable String remoteDefault) {
         try {
             Repository repository = repository();
-            String branch = branch(repository);
             ObjectId before = repository.resolve(Constants.HEAD);
+            if (firstConnect) {
+                connect(repository, remoteDefault);
+            }
+            String branch = branch(repository);
             Ref tracking = repository.exactRef(trackingRef(branch));
             ObjectId theirs = tracking == null ? null : tracking.getObjectId();
             if (tracking != null && theirs != null && !theirs.equals(before)) {
@@ -261,6 +284,11 @@ public final class SyncManager {
                 } else if (status != MergeResult.MergeStatus.ALREADY_UP_TO_DATE) {
                     throw new SyncFailure(Result.of(Outcome.ERROR, "merge " + status.toString().toLowerCase(Locale.ROOT)));
                 }
+            }
+            if (firstConnect) {
+                // the remote's files may lack them, after taking the remote's files
+                repo.writeMissingSetupFiles();
+                repo.commit();
             }
             ObjectId after = repository.resolve(Constants.HEAD);
             boolean changed = after != null && !after.equals(before);
@@ -307,6 +335,119 @@ public final class SyncManager {
         }
     }
 
+    /**
+     * The first sync with a remote: the local branch takes the name of the
+     * remote's default branch, so that both sides talk about the same branch. A
+     * phone with nothing of its own yet (only the setup commit's files) takes the
+     * remote's files as they are, instead of merging two histories; otherwise the
+     * two histories are merged, by the caller.
+     */
+    private void connect(Repository repository, @Nullable String remoteDefault) throws IOException, GitAPIException {
+        String branch = branch(repository);
+        if (remoteDefault == null) {
+            LOG.info("first sync, the remote is empty");
+            setUpstream(repository, branch);
+            return;
+        }
+        Git git = Git.wrap(repository);
+        if (!branch.equals(remoteDefault)) {
+            git.branchRename().setOldName(branch).setNewName(remoteDefault).call();
+            LOG.info("branch renamed to " + remoteDefault + ", as on the remote");
+        }
+        setUpstream(repository, remoteDefault);
+        if (onlySetupFiles(repository)) {
+            git.reset().setMode(ResetCommand.ResetType.HARD).setRef(trackingRef(remoteDefault)).call();
+            LOG.info("first sync, nothing local yet: took the remote's files");
+        } else {
+            LOG.info("first sync, files on both sides: merging");
+        }
+    }
+
+    /** Whether the last commit holds nothing but the setup commit's files. */
+    private static boolean onlySetupFiles(Repository repository) throws IOException {
+        ObjectId tree = repository.resolve(Constants.HEAD + "^{tree}");
+        if (tree == null) {
+            return true;
+        }
+        try (TreeWalk walk = new TreeWalk(repository)) {
+            walk.addTree(tree);
+            walk.setRecursive(false);
+            while (walk.next()) {
+                String path = walk.getPathString();
+                if (!path.equals(GitRepo.ATTRIBUTES) && !path.equals(GitRepo.IGNORE)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    /** So that git on a computer, given this repository, knows what to pull. */
+    private static void setUpstream(Repository repository, String branch) throws IOException {
+        StoredConfig config = repository.getConfig();
+        config.setString("branch", branch, "remote", REMOTE);
+        config.setString("branch", branch, "merge", Constants.R_HEADS + branch);
+        config.save();
+    }
+
+    /** Deletes the remote-tracking branches and upstream settings of the old remote. */
+    private static void forgetRemote(Repository repository) throws IOException {
+        for (Ref ref : repository.getRefDatabase().getRefsByPrefix(TRACKING_PREFIX)) {
+            RefUpdate delete = repository.updateRef(ref.getName());
+            delete.setForceUpdate(true);
+            RefUpdate.Result result = delete.delete();
+            if (result != RefUpdate.Result.FORCED && result != RefUpdate.Result.NO_CHANGE) {
+                throw new IOException("old remote branch not deleted: " + result);
+            }
+        }
+        StoredConfig config = repository.getConfig();
+        for (String branch : config.getSubsections("branch")) {
+            config.unsetSection("branch", branch);
+        }
+    }
+
+    /**
+     * The remote's default branch, from what it advertised: the branch its HEAD
+     * points to; when that can't be told, "main", "master", or the only branch.
+     * Null when the remote has no branch at all.
+     */
+    static @Nullable String defaultBranch(Collection<Ref> advertised) {
+        List<String> branches = new ArrayList<>();
+        ObjectId headId = null;
+        String headTarget = null;
+        for (Ref ref : advertised) {
+            if (ref.getName().equals(Constants.HEAD)) {
+                headId = ref.getObjectId();
+                if (ref.isSymbolic()) {
+                    headTarget = ref.getTarget().getName();
+                }
+            } else if (ref.getName().startsWith(Constants.R_HEADS)) {
+                branches.add(ref.getName().substring(Constants.R_HEADS.length()));
+            }
+        }
+        if (branches.isEmpty()) {
+            return null;
+        }
+        if (headTarget != null && headTarget.startsWith(Constants.R_HEADS)) {
+            return headTarget.substring(Constants.R_HEADS.length());
+        }
+        Collections.sort(branches);
+        List<String> atHead = new ArrayList<>();
+        for (Ref ref : advertised) {
+            if (ref.getName().startsWith(Constants.R_HEADS) && headId != null && headId.equals(ref.getObjectId())) {
+                atHead.add(ref.getName().substring(Constants.R_HEADS.length()));
+            }
+        }
+        List<String> candidates = atHead.isEmpty() ? branches : atHead;
+        for (String preferred : new String[] {"main", "master"}) {
+            if (candidates.contains(preferred)) {
+                return preferred;
+            }
+        }
+        Collections.sort(candidates);
+        return candidates.get(0);
+    }
+
     private Repository repository() {
         return repo.repository();
     }
@@ -327,7 +468,7 @@ public final class SyncManager {
     }
 
     private static String trackingRef(String branch) {
-        return Constants.R_REMOTES + REMOTE + "/" + branch;
+        return TRACKING_PREFIX + branch;
     }
 
     /** Sorts an error into an outcome the user can act on. */

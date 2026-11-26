@@ -127,4 +127,13 @@ The repository is synced with a remote host over HTTPS, with a username and a pe
 
 Fetching and pushing run on a thread of their own, committing and merging on the thread that saves the notes: saving a note never waits for the network, and a merge never runs while a note is being written. Only one sync runs at a time.
 
-A sync ends with one of: done, offline (the host can't be reached), credentials refused, conflict, or another error with a short explanation. Credentials written in the URL (`https://user:token@…`) are refused: they would be saved in the repository's config in clear. Logs name the host only, never the URL's path nor the token.
+A sync ends with one of: done, offline (the host can't be reached), credentials refused, conflict, or another error with a short explanation. Credentials written in the URL (`https://user:token@…`) are refused: they would be saved in the repository's config in clear. The token is never logged; the sync's own log lines name the host only.
+
+### First sync with a remote
+
+The first sync with a remote (or with a new URL: what was known of the old remote is forgotten) connects the two sides:
+
+- The local branch takes the name of the remote's default branch (`main`, `master`…), so that both sides talk about the same branch. Upstream settings are written, so that git on a computer, given a copy of the repository, knows what to pull.
+- The remote is empty: the phone's history is pushed.
+- The phone has nothing of its own yet, only the setup commit's files: it takes the remote's files as they are, with its history, then adds the setup files if the remote lacks them, and pushes that commit.
+- Both sides have files: the two histories are merged (names made by the app are creation times, so two notes rarely share a name), then pushed.

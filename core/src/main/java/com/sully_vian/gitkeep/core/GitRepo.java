@@ -152,8 +152,13 @@ public final class GitRepo implements AutoCloseable {
         }
     }
 
-    /** @return the names of the files written */
-    private List<String> writeMissingSetupFiles() throws IOException {
+    /**
+     * Writes {@value #ATTRIBUTES} and {@value #IGNORE} when they're missing, e.g.
+     * after taking a remote's files that don't have them. Not committed.
+     *
+     * @return the names of the files written
+     */
+    List<String> writeMissingSetupFiles() throws IOException {
         List<String> written = new ArrayList<>();
         writeIfMissing(ATTRIBUTES, ATTRIBUTES_TEXT, written);
         writeIfMissing(IGNORE, IGNORE_TEXT, written);
