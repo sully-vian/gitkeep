@@ -103,13 +103,15 @@ The notes folder becomes a git repository. One step per commit; steps 2 and 3 ar
 
 ## Phase 5 — Remote sync (HTTPS + token, manual)
 
-- [ ] Settings screen: repo URL, username, personal access token, author name and email
-- [ ] Store the token encrypted with an Android Keystore key, never in plain `SharedPreferences`
-- [ ] First setup: clone into an empty folder, or connect the existing local repo to the remote (fetch, then merge or replace; decide which wins)
-- [ ] `SyncManager.sync()`: commit → pull (merge) → push
-- [ ] Sync button and status line ("Synced 2 min ago", "Offline", "Error: …")
-- [ ] Reload the list and the open note after a pull changed them
-- [ ] JVM tests for sync against local bare repos
+The repository is synced with a remote host over HTTPS, with a personal access token, when the Sync button is pressed. One step per commit; steps 1 to 3 are pure Java in `core`, with JVM tests against local bare repositories (`file://` URLs).
+
+1. [ ] `SyncManager.sync()` for a connected repository: commit → fetch → merge (fast-forward when possible) → push when ahead. Fetch and push run on a network thread, commit and merge on the I/O thread, so that saving a note never waits for the network. A lock: a sync asked while one runs gets the running one's result. A push rejected because the remote moved is retried once. Errors sorted into offline, wrong credentials, conflict, other. Logs name the host only, never the token.
+2. [ ] First connect, to a remote never synced (or after the URL changed): the local branch follows the remote's default branch. Remote empty: push. No note in the local repository yet: take the remote as it is. Notes on both sides: merge the two histories, then push.
+3. [ ] Conflicts, until Phase 6: a merge with conflicts is undone (the repository goes back to its last commit, local notes untouched), nothing is pushed, and the status names the files. A repository left in the middle of a merge (app killed) is reset when opened.
+4. [ ] Settings screen (`androidx.preference`), from the list's menu: repository URL, username, token, author name and email. The author applies to the next commit; empty fields fall back to `gitkeep <gitkeep@localhost>`.
+5. [ ] The token encrypted with an Android Keystore key, never in plain `SharedPreferences`. A token that can't be decrypted (e.g. after a restore on another phone) counts as not set.
+6. [ ] Sync button in the list's app bar, status as its subtitle ("Synced 2 minutes ago", "Syncing…", "Offline", "Error: …"). Sync only starts from the list, so only the list reloads after a pull changed notes.
+7. [ ] Check against a real remote (a throwaway GitHub repository).
 
 **Done when:** an edit on the phone shows up on GitHub/Gitea, and an edit made on the computer shows up on the phone after tapping Sync.
 
@@ -138,6 +140,7 @@ The notes folder becomes a git repository. One step per commit; steps 2 and 3 ar
 - [ ] Sync when the app comes to the foreground and when it goes to the background
 - [ ] WorkManager periodic job (minimum interval: 15 minutes), only with network
 - [ ] The same lock in `SyncManager` for the worker, the UI and the commits
+- [ ] Reload the open note when a sync changed it (unsaved typing kept)
 
 **Done when:** the Sync button is never pressed manually anymore.
 
