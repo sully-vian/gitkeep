@@ -115,3 +115,16 @@ Edit 20261124-015725.md
 Edit 20261125-080000.md
 Delete 20261101-090000.md
 ```
+
+## Sync
+
+The repository is synced with a remote host over HTTPS, with a username and a personal access token, by `SyncManager`. A sync:
+
+1. commits whatever is pending;
+2. fetches the remote (`origin`);
+3. merges its branch into the local one: a fast-forward when the phone has nothing new, else a merge commit, "Merge remote changes", by the app's author;
+4. pushes when the phone has commits the remote doesn't, and when the remote moved in the meantime (another device pushed), fetches, merges and pushes once more.
+
+Fetching and pushing run on a thread of their own, committing and merging on the thread that saves the notes: saving a note never waits for the network, and a merge never runs while a note is being written. Only one sync runs at a time.
+
+A sync ends with one of: done, offline (the host can't be reached), credentials refused, conflict, or another error with a short explanation. Credentials written in the URL (`https://user:token@…`) are refused: they would be saved in the repository's config in clear. Logs name the host only, never the URL's path nor the token.

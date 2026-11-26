@@ -37,7 +37,10 @@ import org.jspecify.annotations.Nullable;
  * repository in ".git" inside it (hidden, so {@link NoteStore} never lists it).
  *
  * <p>
- * Blocking file I/O, and not thread-safe: use it from one thread only.
+ * Blocking file I/O, and not thread-safe: use it from one thread only. The
+ * exception is {@link SyncManager}'s fetch and push, which may run on another
+ * thread at the same time: they only touch git's objects and remote-tracking
+ * branches, never the work tree, the index or the local branch.
  *
  * <p>
  * Logs file names only, never what's in the notes.
@@ -68,8 +71,8 @@ public final class GitRepo implements AutoCloseable {
 
     private final Path dir;
     private final Git git;
-    private final String authorName;
-    private final String authorEmail;
+    private volatile String authorName;
+    private volatile String authorEmail;
     private final Clock clock;
     private final GitDates dates = new GitDates();
 
@@ -323,8 +326,7 @@ public final class GitRepo implements AutoCloseable {
     private RevCommit commitFiles(String message, List<String> added, List<String> removed)
             throws GitAPIException {
         stage(added, removed);
-        PersonIdent ident = new PersonIdent(authorName, authorEmail,
-                Date.from(clock.instant()), TimeZone.getTimeZone(clock.getZone()));
+        PersonIdent ident = ident();
         RevCommit commit = git.commit()
                 .setMessage(message)
                 .setAuthor(ident)
@@ -372,6 +374,21 @@ public final class GitRepo implements AutoCloseable {
     Map<String, GitDates.FileDates> dates() throws IOException {
         dates.update(git.getRepository());
         return dates.all();
+    }
+
+    /**
+     * Sets the author and committer of the next commits, e.g. after a change in
+     * the settings.
+     */
+    public void setAuthor(String name, String email) {
+        authorName = name;
+        authorEmail = email;
+    }
+
+    /** The app's author, now. */
+    PersonIdent ident() {
+        return new PersonIdent(authorName, authorEmail,
+                Date.from(clock.instant()), TimeZone.getTimeZone(clock.getZone()));
     }
 
     /** The JGit repository, for the tests and for reading the history. */
